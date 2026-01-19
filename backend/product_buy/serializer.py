@@ -1,4 +1,3 @@
-# Path: backend/product_buy/serializer.py
 from rest_framework import serializers
 from .models import ProductBuy
 import base64
@@ -26,9 +25,12 @@ class ProductBuySerializer(serializers.ModelSerializer):
     productName = serializers.ReadOnlyField(source='product.productName')
     productImage = serializers.ReadOnlyField(source='product.productImage')
 
+    # Fetch dynamically from Customer FK
+    buyerName = serializers.ReadOnlyField(source='customer.name')
+
     image = Base64ImageField(required=False, allow_null=True)
 
     class Meta:
         model = ProductBuy
         fields = '__all__'
-        read_only_fields = ['created_at', 'buyerName']
+        read_only_fields = ['created_at']

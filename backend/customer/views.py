@@ -2,104 +2,99 @@ from django.shortcuts import render
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
-from .models import Customer
+from .models import Customer, PasswordResetToken
 from .serializer import CustomerSerializer
-import random
 import requests
 import os
+from django.utils import timezone
 
-# Temporary storage for OTPs (In memory)
-OTP_STORAGE = {} 
-TELEGRAM_BOT_TOKEN =  os.environ.get("TLGRMTKN")
-if not TELEGRAM_BOT_TOKEN:
-    print("⚠️ WARNING: Telegram Token not found in environment variables.")
+TELEGRAM_BOT_TOKEN = os.environ.get("TLGRMTKN")
 
-# 1. LOGIN API
+# --- 1. LOGIN ---
 class LoginAPI(APIView):
     def post(self, request):
         email = request.data.get('email')
         password = request.data.get('password')
 
         try:
-            # Check if user exists
             customer = Customer.objects.get(email=email)
-            # Check password
             if customer.password == password:
                 serializer = CustomerSerializer(customer)
                 return Response(serializer.data, status=status.HTTP_200_OK)
             else:
                 return Response({"error": "Incorrect Password"}, status=status.HTTP_400_BAD_REQUEST)
         except Customer.DoesNotExist:
-            return Response({"error": "Email not found. Please Register."}, status=status.HTTP_404_NOT_FOUND)
+            return Response({"error": "Email not found."}, status=status.HTTP_404_NOT_FOUND)
 
-# 2. SEND OTP
-class SendTelegramOTP(APIView):
+# --- 2. FORGOT PASSWORD (SEND LINK) ---
+class ForgotPasswordLinkAPI(APIView):
     def post(self, request):
         if not TELEGRAM_BOT_TOKEN:
-            return Response({"error": "Server configuration error: Telegram Token missing"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-        phone = request.data.get('phone')
-        chat_id = request.data.get('chat_id') 
-        
+            return Response({"error": "Server Config Error: Telegram Token Missing"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            
+        email = request.data.get('email')
+        chat_id = request.data.get('chat_id')
+
         try:
-            customer = Customer.objects.get(phone=phone)
+            customer = Customer.objects.get(email=email)
         except Customer.DoesNotExist:
-            return Response({"error": "Phone number not registered."}, status=status.HTTP_404_NOT_FOUND)
+            return Response({"error": "Email not registered."}, status=status.HTTP_404_NOT_FOUND)
 
         if not chat_id:
              return Response({"error": "Chat ID is required."}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Generate OTP
-        otp = str(random.randint(1000, 9999))
-        OTP_STORAGE[phone] = otp
+        # Create Token
+        reset_obj = PasswordResetToken.objects.create(user_email=email)
         
-        # Send to Telegram
-        message = f"🔐 Agrivendia OTP: {otp}\nUser: {customer.name}"
+        # Link to Frontend (Adjust port if needed)
+        # Assuming frontend is serving reset_password.html
+        reset_link = f"http://127.0.0.1:5500/frontend/reset_password.html?token={reset_obj.token}"
+        
+        # Send Telegram Message
+        message = f"🔑 *Agrivendia Password Reset*\nHello {customer.name},\n\nClick here to reset:\n{reset_link}\n\n(Link expires in 30 mins)"
         telegram_url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
-        data = {
-            "chat_id": chat_id, 
-            "text": message
-        }
+        data = { "chat_id": chat_id, "text": message, "parse_mode": "Markdown" }
         
         try:
             requests.post(telegram_url, data=data)
-            return Response({"message": "OTP sent to your Telegram!"}, status=status.HTTP_200_OK)
+            return Response({"message": "Reset link sent to Telegram!"}, status=status.HTTP_200_OK)
         except Exception as e:
-            return Response({"error": "Telegram API Error: " + str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-# 3. VERIFY OTP (Does NOT delete OTP yet, just checks it)
-class VerifyTelegramOTP(APIView):
-    def post(self, request):
-        phone = request.data.get('phone')
-        otp_entered = request.data.get('otp')
-
-        if phone in OTP_STORAGE and str(OTP_STORAGE[phone]) == str(otp_entered):
-            # Return success but keep OTP in memory for the next step (Reset Password)
-            return Response({"message": "OTP Verified"}, status=status.HTTP_200_OK)
-        else:
-            return Response({"error": "Invalid OTP"}, status=status.HTTP_400_BAD_REQUEST)
-
-# 4. RESET PASSWORD (New API)
+# --- 3. RESET PASSWORD (VERIFY & CHANGE) ---
 class ResetPasswordAPI(APIView):
     def post(self, request):
-        phone = request.data.get('phone')
-        otp_entered = request.data.get('otp')
+        token = request.data.get('token')
         new_password = request.data.get('new_password')
 
-        # Security Check: Verify OTP again
-        if phone in OTP_STORAGE and str(OTP_STORAGE[phone]) == str(otp_entered):
-            try:
-                customer = Customer.objects.get(phone=phone)
-                customer.password = new_password # Set New Password
-                customer.save()
-                
-                del OTP_STORAGE[phone] # NOW delete the OTP
-                return Response({"message": "Password changed successfully!"}, status=status.HTTP_200_OK)
-            except Customer.DoesNotExist:
-                return Response({"error": "User not found"}, status=status.HTTP_404_NOT_FOUND)
-        else:
-            return Response({"error": "Session expired or Invalid OTP"}, status=status.HTTP_400_BAD_REQUEST)
+        if not token or not new_password:
+            return Response({"error": "Missing token or password"}, status=status.HTTP_400_BAD_REQUEST)
 
-# Standard CRUD
+        try:
+            reset_obj = PasswordResetToken.objects.get(token=token)
+            
+            # Check Expiry (30 mins)
+            time_diff = timezone.now() - reset_obj.created_at
+            if time_diff.total_seconds() > 1800: 
+                reset_obj.delete()
+                return Response({"error": "Link expired."}, status=status.HTTP_400_BAD_REQUEST)
+            
+            # Change Password
+            customer = Customer.objects.get(email=reset_obj.user_email)
+            customer.password = new_password
+            customer.save()
+            
+            # Delete Token
+            reset_obj.delete()
+            
+            return Response({"message": "Password updated successfully!"}, status=status.HTTP_200_OK)
+
+        except PasswordResetToken.DoesNotExist:
+            return Response({"error": "Invalid Token"}, status=status.HTTP_400_BAD_REQUEST)
+        except Customer.DoesNotExist:
+            return Response({"error": "User not found"}, status=status.HTTP_404_NOT_FOUND)
+
+# --- 4. CRUD ---
 class CustomerAPI(APIView):
     def post(self, request):
         serializer = CustomerSerializer(data=request.data)
