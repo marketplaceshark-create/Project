@@ -2233,11 +2233,9 @@ footer { background: #212529; color: white; text-align: center; padding: 3rem 0;
 ## File: backend/populate_data.py
 ```python
 # Path: backend/populate_data.py
-# Path: backend/populate_data.py
 import os
 import django
 import random
-from datetime import datetime
 
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'agrivendia.settings')
 django.setup()
@@ -2253,7 +2251,6 @@ from plan.models import Plan
 
 def populate():
     print("🧹 Cleaning old data...")
-    # Delete in specific order to satisfy Foreign Keys
     ProductBid.objects.all().delete()
     ProductSell.objects.all().delete()
     ProductBuy.objects.all().delete()
@@ -2265,7 +2262,7 @@ def populate():
     
     print("🌱 Populating Database...")
 
-    # --- 1. CATEGORIES (6 Records) ---
+    # --- 1. CATEGORIES ---
     print("   [1/9] Creating Categories...")
     cats_data = {
         "Vegetables": "Fresh, organic, and locally grown vegetables.",
@@ -2273,7 +2270,8 @@ def populate():
         "Grains": "Rice, Wheat, Maize, and Millets.",
         "Spices": "Authentic aromatic spices.",
         "Commercial": "Cotton, Sugarcane, Jute, and Coffee.",
-        "Dairy": "Fresh Milk, Ghee, Paneer, and Curd."
+        "Dairy": "Fresh Milk, Ghee, Paneer, and Curd.",
+        "Others": "Miscellaneous items and custom products."
     }
     
     cat_objects = {}
@@ -2281,7 +2279,7 @@ def populate():
         c = Category.objects.create(name=name, description=desc)
         cat_objects[name] = c
 
-    # --- 2. PLANS (4 Records) ---
+    # --- 2. PLANS ---
     print("   [2/9] Creating Plans...")
     plans_data = [
         ("Free Starter", "Lifetime", "0"),
@@ -2292,19 +2290,16 @@ def populate():
     for name, dur, price in plans_data:
         Plan.objects.create(name=name, duration=dur, price=price)
 
-    # --- 3. ADMIN USERS (3 Records) ---
+    # --- 3. ADMIN USERS ---
     print("   [3/9] Creating Admins...")
     User.objects.create(name="Super Admin", email="admin@agri.com", phone="9999999999", password="admin")
-    User.objects.create(name="Support Staff", email="support@agri.com", phone="8888888888", password="admin")
-    User.objects.create(name="Manager", email="manager@agri.com", phone="7777777777", password="admin")
 
-    # --- 4. CUSTOMERS (20 Records) ---
+    # --- 4. CUSTOMERS ---
     print("   [4/9] Creating Customers...")
     customer_names = [
         "Ramesh Patil", "Suresh Kumar", "Anita Desai", "Farm Fresh Ltd", "Organic Basket",
         "John Doe", "Rahul Dravid", "Big Basket Sourcing", "Reliance Fresh", "Kisan Mandi",
-        "Vijay Singh", "Priya Sharma", "Green Earth Agro", "Mahesh Babu", "Local Traders",
-        "Sunita Williams", "Harvest Gold", "Pure Foods", "Desi Farms", "Nature Basket"
+        "Vijay Singh", "Priya Sharma", "Green Earth Agro", "Mahesh Babu", "Local Traders"
     ]
     
     customers = []
@@ -2314,39 +2309,22 @@ def populate():
             email=f"user{i+1}@example.com",
             phone=f"98{random.randint(10000000, 99999999)}",
             address=f"Plot No {i+1}, Agri Zone, India",
-            password="123" # Simple password for testing
+            password="123" 
         )
         customers.append(c)
 
-    # --- 5. PRODUCTS (20 Records) ---
+    # --- 5. PRODUCTS ---
     print("   [5/9] Creating Master Products...")
-    # (Name, Category, Image)
     product_catalog = [
         ("Red Onion", "Vegetables", "https://images.unsplash.com/photo-1618512496248-a07fe83aa8cb?w=600"),
         ("Potato (Jyoti)", "Vegetables", "https://images.unsplash.com/photo-1518977676601-b53f82aba655?w=600"),
         ("Tomato (Hybrid)", "Vegetables", "https://images.unsplash.com/photo-1592924357228-91a4daadcfea?w=600"),
-        ("Green Chilli", "Vegetables", "https://images.unsplash.com/photo-1628003632975-6f2963162788?w=600"),
-        ("Carrot", "Vegetables", "https://images.unsplash.com/photo-1598170845058-32b9d6a5da37?w=600"),
-        ("Spinach", "Vegetables", "https://images.unsplash.com/photo-1576045057995-568f588f82fb?w=600"),
-        ("Cauliflower", "Vegetables", "https://images.unsplash.com/photo-1568584711075-3d021a7c3ca3?w=600"),
-        
         ("Kashmir Apple", "Fruits", "https://images.unsplash.com/photo-1560806887-1e4cd0b6cbd6?w=600"),
         ("Alphonso Mango", "Fruits", "https://images.unsplash.com/photo-1553279768-865429fa0078?w=600"),
-        ("Robusta Banana", "Fruits", "https://images.unsplash.com/photo-1603833665858-e61d17a86224?w=600"),
-        ("Pomegranate", "Fruits", "https://images.unsplash.com/photo-1615485925763-867862780c1d?w=600"),
-        ("Green Grapes", "Fruits", "https://images.unsplash.com/photo-1537640538965-175629952716?w=600"),
-
         ("Basmati Rice", "Grains", "https://images.unsplash.com/photo-1586201375761-83865001e31c?w=600"),
         ("Wheat (Sharbati)", "Grains", "https://images.unsplash.com/photo-1574323347407-f5e1ad6d020b?w=600"),
-        ("Yellow Corn", "Grains", "https://images.unsplash.com/photo-1551754655-cd27e38d2076?w=600"),
-        
-        ("Turmeric Powder", "Spices", "https://images.unsplash.com/photo-1615485290382-441e4d049cb5?w=600"),
-        ("Red Chilli Powder", "Spices", "https://images.unsplash.com/photo-1596040033229-a9821ebd058d?w=600"),
-        
         ("Raw Cotton", "Commercial", "https://images.unsplash.com/photo-1606132039201-98782a20b227?w=600"),
-        ("Sugarcane", "Commercial", "https://images.unsplash.com/photo-1605333190460-70f90c4fb50f?w=600"),
-        
-        ("Buffalo Milk", "Dairy", "https://images.unsplash.com/photo-1550583724-b2692b85b150?w=600"),
+        ("Other / Custom", "Others", "https://via.placeholder.com/150")
     ]
 
     products_list = []
@@ -2359,10 +2337,9 @@ def populate():
         )
         products_list.append(p)
 
-    # Locations for randomization
-    locations = ["Nashik", "Pune", "Mumbai", "Nagpur", "Kolar", "Punjab", "Haryana", "Bangalore", "Delhi", "Gujarat"]
+    locations = ["Nashik", "Pune", "Mumbai", "Nagpur", "Bangalore", "Delhi", "Gujarat"]
 
-    # --- 6. SELL LISTINGS (20 Records) ---
+    # --- 6. SELL LISTINGS ---
     print("   [6/9] Creating Sell Listings...")
     sell_posts = []
     for i in range(20):
@@ -2379,14 +2356,12 @@ def populate():
             price=round(random.uniform(20.0, 5000.0), 2),
             quantity=random.randint(50, 5000),
             description="Freshly harvested, immediate delivery available.",
-            sellerName=cust.name,
-            phoneNo=cust.phone,
-            # We skip actual file upload for script, frontend falls back to Product Image
             image=None 
+            # Note: Removed sellerName and phoneNo as they are now FKs
         )
         sell_posts.append(sp)
 
-    # --- 7. BUY REQUESTS (20 Records) ---
+    # --- 7. BUY REQUESTS ---
     print("   [7/9] Creating Buy Requests...")
     buy_posts = []
     for i in range(20):
@@ -2399,58 +2374,47 @@ def populate():
             product=prod,
             category=prod.category,
             name="General",
-            buyerName=cust.name,
-            price=round(random.uniform(15.0, 4000.0), 2), # Usually slightly lower than sell price
+            price=round(random.uniform(15.0, 4000.0), 2), 
             quantity=random.randint(100, 10000),
             location=loc,
             image=None
+            # Note: Removed buyerName
         )
         buy_posts.append(bp)
 
-    # --- 8. BIDS (20 Records) ---
+    # --- 8. BIDS ---
     print("   [8/9] Creating Bids...")
     for i in range(20):
-        # 50% chance to bid on Sell Post, 50% on Buy Post
         is_sell_bid = random.choice([True, False])
         bidder = random.choice(customers)
-        
         status_choice = random.choice(['PENDING', 'ACCEPTED', 'PENDING', 'REJECTED'])
         
         if is_sell_bid:
             post = random.choice(sell_posts)
-            # Ensure bidder is not seller (simple check)
-            while post.customer == bidder:
-                bidder = random.choice(customers)
+            while post.customer == bidder: bidder = random.choice(customers)
             
             ProductBid.objects.create(
                 bidder=bidder,
                 sell_post=post,
-                amount=post.price * 0.95, # Bid slightly lower
+                amount=post.price * 0.95, 
                 quantity=random.randint(10, post.quantity),
                 message="Can you arrange transport?",
                 status=status_choice
             )
         else:
             post = random.choice(buy_posts)
-            while post.customer == bidder:
-                bidder = random.choice(customers)
+            while post.customer == bidder: bidder = random.choice(customers)
                 
             ProductBid.objects.create(
                 bidder=bidder,
                 buy_post=post,
-                amount=post.price * 1.05, # Offer slightly higher
+                amount=post.price * 1.05, 
                 quantity=post.quantity,
                 message="I have this stock ready.",
                 status=status_choice
             )
 
-    print("\n✅ Database Successfully Populated with 20+ records per table!")
-    print(f"   -> {Category.objects.count()} Categories")
-    print(f"   -> {Product.objects.count()} Master Products")
-    print(f"   -> {Customer.objects.count()} Customers")
-    print(f"   -> {ProductSell.objects.count()} Sell Listings")
-    print(f"   -> {ProductBuy.objects.count()} Buy Requests")
-    print(f"   -> {ProductBid.objects.count()} Bids")
+    print("\n✅ Database Successfully Populated!")
 
 if __name__ == '__main__':
     populate()
@@ -2896,15 +2860,14 @@ from django.contrib import admin
 ```python
 # Path: backend/customer/urls.py
 from django.urls import path
-from .views import CustomerAPI, SendTelegramOTP, VerifyTelegramOTP, LoginAPI, ResetPasswordAPI
+from .views import CustomerAPI, LoginAPI, ForgotPasswordLinkAPI, ResetPasswordAPI
 
 urlpatterns = [
-    path('', CustomerAPI.as_view()),                 # List & Create
-    path('<int:id>/', CustomerAPI.as_view()),        # Get/Update/Delete by ID
+    path('', CustomerAPI.as_view()),                 
+    path('<int:id>/', CustomerAPI.as_view()),        
     path('login/', LoginAPI.as_view()), 
-    path('send-otp/', SendTelegramOTP.as_view()), 
-    path('verify-otp/', VerifyTelegramOTP.as_view()),
-    path('reset-password/', ResetPasswordAPI.as_view()),
+    path('forgot-password/', ForgotPasswordLinkAPI.as_view()), # Generates Link
+    path('reset-password/', ResetPasswordAPI.as_view()),       # Validates Token & Resets
 ]
 ```
 
@@ -2938,104 +2901,99 @@ from django.shortcuts import render
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
-from .models import Customer
+from .models import Customer, PasswordResetToken
 from .serializer import CustomerSerializer
-import random
 import requests
 import os
+from django.utils import timezone
 
-# Temporary storage for OTPs (In memory)
-OTP_STORAGE = {} 
-TELEGRAM_BOT_TOKEN =  os.environ.get("TLGRMTKN")
-if not TELEGRAM_BOT_TOKEN:
-    print("⚠️ WARNING: Telegram Token not found in environment variables.")
+TELEGRAM_BOT_TOKEN = os.environ.get("TLGRMTKN")
 
-# 1. LOGIN API
+# --- 1. LOGIN ---
 class LoginAPI(APIView):
     def post(self, request):
         email = request.data.get('email')
         password = request.data.get('password')
 
         try:
-            # Check if user exists
             customer = Customer.objects.get(email=email)
-            # Check password
             if customer.password == password:
                 serializer = CustomerSerializer(customer)
                 return Response(serializer.data, status=status.HTTP_200_OK)
             else:
                 return Response({"error": "Incorrect Password"}, status=status.HTTP_400_BAD_REQUEST)
         except Customer.DoesNotExist:
-            return Response({"error": "Email not found. Please Register."}, status=status.HTTP_404_NOT_FOUND)
+            return Response({"error": "Email not found."}, status=status.HTTP_404_NOT_FOUND)
 
-# 2. SEND OTP
-class SendTelegramOTP(APIView):
+# --- 2. FORGOT PASSWORD (SEND LINK) ---
+class ForgotPasswordLinkAPI(APIView):
     def post(self, request):
         if not TELEGRAM_BOT_TOKEN:
-            return Response({"error": "Server configuration error: Telegram Token missing"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-        phone = request.data.get('phone')
-        chat_id = request.data.get('chat_id') 
-        
+            return Response({"error": "Server Config Error: Telegram Token Missing"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            
+        email = request.data.get('email')
+        chat_id = request.data.get('chat_id')
+
         try:
-            customer = Customer.objects.get(phone=phone)
+            customer = Customer.objects.get(email=email)
         except Customer.DoesNotExist:
-            return Response({"error": "Phone number not registered."}, status=status.HTTP_404_NOT_FOUND)
+            return Response({"error": "Email not registered."}, status=status.HTTP_404_NOT_FOUND)
 
         if not chat_id:
              return Response({"error": "Chat ID is required."}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Generate OTP
-        otp = str(random.randint(1000, 9999))
-        OTP_STORAGE[phone] = otp
+        # Create Token
+        reset_obj = PasswordResetToken.objects.create(user_email=email)
         
-        # Send to Telegram
-        message = f"🔐 Agrivendia OTP: {otp}\nUser: {customer.name}"
+        # Link to Frontend (Adjust port if needed)
+        # Assuming frontend is serving reset_password.html
+        reset_link = f"http://127.0.0.1:5500/frontend/reset_password.html?token={reset_obj.token}"
+        
+        # Send Telegram Message
+        message = f"🔑 *Agrivendia Password Reset*\nHello {customer.name},\n\nClick here to reset:\n{reset_link}\n\n(Link expires in 30 mins)"
         telegram_url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
-        data = {
-            "chat_id": chat_id, 
-            "text": message
-        }
+        data = { "chat_id": chat_id, "text": message, "parse_mode": "Markdown" }
         
         try:
             requests.post(telegram_url, data=data)
-            return Response({"message": "OTP sent to your Telegram!"}, status=status.HTTP_200_OK)
+            return Response({"message": "Reset link sent to Telegram!"}, status=status.HTTP_200_OK)
         except Exception as e:
-            return Response({"error": "Telegram API Error: " + str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-# 3. VERIFY OTP (Does NOT delete OTP yet, just checks it)
-class VerifyTelegramOTP(APIView):
-    def post(self, request):
-        phone = request.data.get('phone')
-        otp_entered = request.data.get('otp')
-
-        if phone in OTP_STORAGE and str(OTP_STORAGE[phone]) == str(otp_entered):
-            # Return success but keep OTP in memory for the next step (Reset Password)
-            return Response({"message": "OTP Verified"}, status=status.HTTP_200_OK)
-        else:
-            return Response({"error": "Invalid OTP"}, status=status.HTTP_400_BAD_REQUEST)
-
-# 4. RESET PASSWORD (New API)
+# --- 3. RESET PASSWORD (VERIFY & CHANGE) ---
 class ResetPasswordAPI(APIView):
     def post(self, request):
-        phone = request.data.get('phone')
-        otp_entered = request.data.get('otp')
+        token = request.data.get('token')
         new_password = request.data.get('new_password')
 
-        # Security Check: Verify OTP again
-        if phone in OTP_STORAGE and str(OTP_STORAGE[phone]) == str(otp_entered):
-            try:
-                customer = Customer.objects.get(phone=phone)
-                customer.password = new_password # Set New Password
-                customer.save()
-                
-                del OTP_STORAGE[phone] # NOW delete the OTP
-                return Response({"message": "Password changed successfully!"}, status=status.HTTP_200_OK)
-            except Customer.DoesNotExist:
-                return Response({"error": "User not found"}, status=status.HTTP_404_NOT_FOUND)
-        else:
-            return Response({"error": "Session expired or Invalid OTP"}, status=status.HTTP_400_BAD_REQUEST)
+        if not token or not new_password:
+            return Response({"error": "Missing token or password"}, status=status.HTTP_400_BAD_REQUEST)
 
-# Standard CRUD
+        try:
+            reset_obj = PasswordResetToken.objects.get(token=token)
+            
+            # Check Expiry (30 mins)
+            time_diff = timezone.now() - reset_obj.created_at
+            if time_diff.total_seconds() > 1800: 
+                reset_obj.delete()
+                return Response({"error": "Link expired."}, status=status.HTTP_400_BAD_REQUEST)
+            
+            # Change Password
+            customer = Customer.objects.get(email=reset_obj.user_email)
+            customer.password = new_password
+            customer.save()
+            
+            # Delete Token
+            reset_obj.delete()
+            
+            return Response({"message": "Password updated successfully!"}, status=status.HTTP_200_OK)
+
+        except PasswordResetToken.DoesNotExist:
+            return Response({"error": "Invalid Token"}, status=status.HTTP_400_BAD_REQUEST)
+        except Customer.DoesNotExist:
+            return Response({"error": "User not found"}, status=status.HTTP_404_NOT_FOUND)
+
+# --- 4. CRUD ---
 class CustomerAPI(APIView):
     def post(self, request):
         serializer = CustomerSerializer(data=request.data)
@@ -3082,19 +3040,26 @@ class CustomerAPI(APIView):
 ```python
 # Path: backend/customer/models.py
 from django.db import models
+import uuid
 
-# Create your models here.
 class Customer(models.Model):
-    name = models.CharField(max_length = 100)
-    email = models.EmailField(unique = True)
-    phone = models.CharField(max_length = 10)
-    address = models.TextField(blank = True)
-    password = models.CharField(max_length=100,default='None')
-    created_at = models.DateTimeField(auto_now_add= True)
+    name = models.CharField(max_length=100)
+    email = models.EmailField(unique=True)
+    phone = models.CharField(max_length=15)
+    address = models.TextField(blank=True)
+    password = models.CharField(max_length=100)
+    created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
         return self.name
 
+class PasswordResetToken(models.Model):
+    user_email = models.EmailField()
+    token = models.UUIDField(default=uuid.uuid4, editable=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.user_email} - {self.token}"
 ```
 
 ---
@@ -4024,7 +3989,6 @@ from django.test import TestCase
 ## File: backend/product_buy/serializer.py
 ```python
 # Path: backend/product_buy/serializer.py
-# Path: backend/product_buy/serializer.py
 from rest_framework import serializers
 from .models import ProductBuy
 import base64
@@ -4052,12 +4016,15 @@ class ProductBuySerializer(serializers.ModelSerializer):
     productName = serializers.ReadOnlyField(source='product.productName')
     productImage = serializers.ReadOnlyField(source='product.productImage')
 
+    # Fetch dynamically from Customer FK
+    buyerName = serializers.ReadOnlyField(source='customer.name')
+
     image = Base64ImageField(required=False, allow_null=True)
 
     class Meta:
         model = ProductBuy
         fields = '__all__'
-        read_only_fields = ['created_at', 'buyerName']
+        read_only_fields = ['created_at']
 ```
 
 ---
@@ -4138,25 +4105,25 @@ from .serializer import ProductBuySerializer
 from customer.models import Customer
 
 class ProductBuyAPI(APIView):
+    
+    # --- OWNERSHIP HELPER ---
+    def validate_ownership(self, product_buy, request_data):
+        requester_id = request_data.get('customer') or self.request.query_params.get('customer')
+        if not requester_id: return False
+        return str(product_buy.customer.id) == str(requester_id)
+
     def post(self, request):
         serializer = ProductBuySerializer(data=request.data)
         if serializer.is_valid():
             try:
-                # 1. Get Customer ID
                 customer_id = request.data.get('customer')
-                
-                # 2. Fetch Customer Details
                 current_customer = Customer.objects.get(id=customer_id)
-                
-                # 3. Save listing with Customer's Name
-                serializer.save(buyerName=current_customer.name)
-                
+                serializer.save(customer=current_customer)
                 return Response(serializer.data, status=status.HTTP_201_CREATED)
             except Customer.DoesNotExist:
                  return Response({"error": "Customer not found"}, status=status.HTTP_400_BAD_REQUEST)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-    # ... (Keep get, put, delete methods as they were) ...
     def get(self, request, id=None):
         if id:
             try:
@@ -4169,12 +4136,10 @@ class ProductBuyAPI(APIView):
         productsBuy = ProductBuy.objects.all()
         
         category_id = request.query_params.get('category_id')
-        if category_id:
-            productsBuy = productsBuy.filter(product__category_id=category_id)
+        if category_id: productsBuy = productsBuy.filter(product__category_id=category_id)
 
         customer_id = request.query_params.get('customer_id')
-        if customer_id:
-            productsBuy = productsBuy.filter(customer_id=customer_id)
+        if customer_id: productsBuy = productsBuy.filter(customer_id=customer_id)
             
         serializer = ProductBuySerializer(productsBuy, many=True)
         return Response(serializer.data)
@@ -4184,7 +4149,11 @@ class ProductBuyAPI(APIView):
             productBuy = ProductBuy.objects.get(id=id)
         except ProductBuy.DoesNotExist:
             return Response({"error":"Not Found"}, status=status.HTTP_404_NOT_FOUND)
-        serializer = ProductBuySerializer(productBuy, data=request.data)
+        
+        if not self.validate_ownership(productBuy, request.data):
+             return Response({"error": "Permission Denied"}, status=status.HTTP_403_FORBIDDEN)
+
+        serializer = ProductBuySerializer(productBuy, data=request.data, partial=True)
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data)
@@ -4195,6 +4164,10 @@ class ProductBuyAPI(APIView):
             productBuy = ProductBuy.objects.get(id=id)
         except ProductBuy.DoesNotExist:
             return Response({"error":"Not Found"}, status=status.HTTP_404_NOT_FOUND)
+        
+        if not self.validate_ownership(productBuy, request.data):
+             return Response({"error": "Permission Denied"}, status=status.HTTP_403_FORBIDDEN)
+
         productBuy.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 ```
@@ -4204,27 +4177,26 @@ class ProductBuyAPI(APIView):
 ## File: backend/product_buy/models.py
 ```python
 # Path: backend/product_buy/models.py
-# Path: backend/product_buy/models.py
 from django.db import models
 from category.models import Category
 from customer.models import Customer
 from product.models import Product
 
 class ProductBuy(models.Model):
-    customer = models.ForeignKey(Customer, on_delete=models.CASCADE, related_name='buy_posts', null=True, blank=True)
+    customer = models.ForeignKey(Customer, on_delete=models.CASCADE, related_name='buy_posts')
     product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='buy_listings', null=True)
     category = models.ForeignKey(Category, on_delete=models.SET_NULL, null=True, blank=True, related_name='buy_products')
+    
     image = models.FileField(upload_to='buy_uploads/', blank=True, null=True)
     name = models.CharField(max_length=50, blank=True, null=True, default="General")
     price = models.DecimalField(max_digits=10, decimal_places=2)
     location = models.CharField(max_length=100)
     quantity = models.PositiveIntegerField()
-    buyerName = models.CharField(max_length=100) 
+    
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        p_name = self.product.productName if self.product else "Unknown Product"
-        return f"Buy: {p_name} - {self.buyerName}"
+        return f"Buy: {self.name} - {self.customer.name}"
 ```
 
 ---
@@ -4408,50 +4380,47 @@ from django.test import TestCase
 ## File: backend/product_sell/serializer.py
 ```python
 # Path: backend/product_sell/serializer.py
-# Path: backend/product_sell/serializer.py
 from rest_framework import serializers
 from .models import ProductSell
 import base64
 import uuid
 from django.core.files.base import ContentFile
 
-# Custom Field to handle Base64 decoding
 class Base64ImageField(serializers.Field):
     def to_internal_value(self, data):
-        # Check if this is a base64 string
         if isinstance(data, str) and data.startswith('data:image'):
-            # format: "data:image/png;base64,iVBORw0KGgo..."
             try:
                 format, imgstr = data.split(';base64,') 
                 ext = format.split('/')[-1] 
                 id = uuid.uuid4()
                 data = ContentFile(base64.b64decode(imgstr), name=f"{id}.{ext}")
-            except Exception as e:
+            except:
                 raise serializers.ValidationError("Invalid image format")
         return data
 
     def to_representation(self, value):
-        if not value:
-            return None
-        try:
-            return value.url
-        except:
-            return None
+        if not value: return None
+        try: return value.url
+        except: return None
 
 class ProductSellSerializer(serializers.ModelSerializer):
+    # Fetch from Master Product Table
     productName = serializers.ReadOnlyField(source='product.productName')
-    productImage = serializers.ReadOnlyField(source='product.productImage') # Fallback URL
+    productImage = serializers.ReadOnlyField(source='product.productImage')
     
-    # Use the custom field
+    # Fetch from Customer Table (Dynamic)
+    sellerName = serializers.ReadOnlyField(source='customer.name')
+    phoneNo = serializers.ReadOnlyField(source='customer.phone')
+    
     image = Base64ImageField(required=False, allow_null=True)
 
     class Meta:
         model = ProductSell
         fields = '__all__'
-        read_only_fields = ['created_at', 'sellerName', 'phoneNo']
+        read_only_fields = ['created_at'] 
 
     def validate_price(self, value):
-        if value <= 0: raise serializers.ValidationError('price must be positive')
+        if value <= 0: raise serializers.ValidationError('Price must be positive')
         return value
 ```
 
@@ -4531,30 +4500,33 @@ from rest_framework.response import Response
 from rest_framework import status
 from .models import ProductSell
 from .serializer import ProductSellSerializer
-from customer.models import Customer # Import Customer model
+from customer.models import Customer
 
 class ProductSellAPI(APIView):
+    
+    # --- OWNERSHIP HELPER ---
+    def validate_ownership(self, product_sell, request_data):
+        # In a real app with Auth headers, use request.user.id
+        # Here we rely on the body/param for training purposes
+        requester_id = request_data.get('customer') or self.request.query_params.get('customer')
+        if not requester_id:
+             return False
+        return str(product_sell.customer.id) == str(requester_id)
+
     def post(self, request):
         serializer = ProductSellSerializer(data=request.data)
         if serializer.is_valid():
             try:
-                # 1. Get Customer ID from request
                 customer_id = request.data.get('customer')
-                
-                # 2. Fetch Customer Details
                 current_customer = Customer.objects.get(id=customer_id)
                 
-                # 3. Save listing with Customer's Name and Phone
-                serializer.save(
-                    sellerName=current_customer.name, 
-                    phoneNo=current_customer.phone
-                )
+                # Save with foreign key relationship
+                serializer.save(customer=current_customer)
                 return Response(serializer.data, status=status.HTTP_201_CREATED)
             except Customer.DoesNotExist:
                 return Response({"error": "Customer not found"}, status=status.HTTP_400_BAD_REQUEST)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-    # ... (Keep get, put, delete methods as they were) ...
     def get(self, request, id=None):
         if id:
             try:
@@ -4567,33 +4539,40 @@ class ProductSellAPI(APIView):
         productsSell = ProductSell.objects.all()
         
         customer_id = request.query_params.get('customer_id')
-        if customer_id:
-            productsSell = productsSell.filter(customer_id=customer_id)
+        if customer_id: productsSell = productsSell.filter(customer_id=customer_id)
 
         category_id = request.query_params.get('category_id')
-        if category_id:
-            productsSell = productsSell.filter(product__category_id=category_id)
+        if category_id: productsSell = productsSell.filter(product__category_id=category_id)
         
         serializer = ProductSellSerializer(productsSell, many=True)
         return Response(serializer.data)
 
-    def put(self,request,id):
+    def put(self, request, id):
         try:
-            productSell= ProductSell.objects.get(id=id)
+            productSell = ProductSell.objects.get(id=id)
         except ProductSell.DoesNotExist:
-            return Response({"error":"Not Found"},status=status.HTTP_404_NOT_FOUND)
+            return Response({"error":"Not Found"}, status=status.HTTP_404_NOT_FOUND)
             
-        serializer = ProductSellSerializer(productSell, data=request.data)
+        # Check Ownership
+        if not self.validate_ownership(productSell, request.data):
+             return Response({"error": "Permission Denied"}, status=status.HTTP_403_FORBIDDEN)
+
+        serializer = ProductSellSerializer(productSell, data=request.data, partial=True)
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-    def delete(self,request,id):
+    def delete(self, request, id):
         try:
-            productSell= ProductSell.objects.get(id=id)
+            productSell = ProductSell.objects.get(id=id)
         except ProductSell.DoesNotExist:
-            return Response({"error":"Not Found"},status=status.HTTP_404_NOT_FOUND)
+            return Response({"error":"Not Found"}, status=status.HTTP_404_NOT_FOUND)
+
+        # Check Ownership (Need customer ID in body or params)
+        if not self.validate_ownership(productSell, request.data):
+             return Response({"error": "Permission Denied"}, status=status.HTTP_403_FORBIDDEN)
+
         productSell.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 ```
@@ -4603,30 +4582,28 @@ class ProductSellAPI(APIView):
 ## File: backend/product_sell/models.py
 ```python
 # Path: backend/product_sell/models.py
-# Path: backend/product_sell/models.py
 from django.db import models
 from category.models import Category
 from customer.models import Customer
 from product.models import Product  
 
 class ProductSell(models.Model):
-    customer = models.ForeignKey(Customer, on_delete=models.CASCADE, related_name='sell_posts', null=True, blank=True)
+    # Foreign Keys serve as the Source of Truth
+    customer = models.ForeignKey(Customer, on_delete=models.CASCADE, related_name='sell_posts')
     product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='sell_listings', null=True) 
     category = models.ForeignKey(Category, on_delete=models.CASCADE, related_name='sell_products', null=True, blank=True)
+    
     image = models.FileField(upload_to='sell_uploads/', blank=True, null=True)
     name = models.CharField(max_length=50, blank=True, null=True, default="General")
     price = models.DecimalField(max_digits=10, decimal_places=2)
     location = models.CharField(max_length=100)
     quantity = models.PositiveIntegerField()
     description = models.CharField(max_length=500)
-    sellerName = models.CharField(max_length=50) 
-    phoneNo = models.CharField(max_length=15)
+    
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        # Safe string representation
-        p_name = self.product.productName if self.product else "Unknown Product"
-        return f"{p_name} by {self.sellerName}"
+        return f"{self.name} - {self.customer.name}"
 ```
 
 ---
