@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en" ng-app="userApp">
+<head>
+    <meta charset="UTF-8">
+    <title>Post Sale - Agrivendia</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link href="css/styles.css" rel="stylesheet">
+    <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.8.2/angular.min.js"></script>
+    <script src="app.js"></script>
+</head>
+<body ng-controller="ProductSellCtrl" class="bg-light">
+    
+    <div ng-include="'components/admin_navbar.html'"></div>
+
+    <div class="container">
+        <div class="form-card mx-auto p-4" style="max-width:600px;">
+            <h3 class="fw-bold text-center mb-4 text-success">Sell Produce</h3>
+            <form ng-submit="saveProductSell()">
+                <div class="row g-3 mb-3">
+                    <div class="col-6">
+                        <label class="small fw-bold text-muted">Category</label>
+                        <select class="form-select" ng-model="product_sell.category" ng-change="loadProducts()" required>
+                            <option ng-repeat="c in categories" value="{{c.id}}">{{c.name}}</option>
+                        </select>
+                    </div>
+                    <div class="col-6">
+                        <label class="small fw-bold text-muted">Product</label>
+                        <select class="form-select" ng-model="product_sell.product" required ng-disabled="!product_sell.category">
+                            <option ng-repeat="p in productsList" value="{{p.id}}">{{p.productName}}</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label class="small fw-bold text-muted">Title / Variety</label>
+                    <input type="text" class="form-control" ng-model="product_sell.name" placeholder="e.g. Nashik Red">
+                </div>
+                <div class="mb-3">
+                    <label class="small fw-bold text-muted">Photo</label>
+                    <input type="file" class="form-control" fileread="product_sell.image" accept="image/*">
+                </div>
+                <div class="row g-3 mb-3">
+                    <div class="col-6"><label class="small fw-bold text-muted">Price (₹)</label><input type="number" class="form-control" ng-model="product_sell.price" required></div>
+                    <div class="col-6"><label class="small fw-bold text-muted">Qty</label><input type="number" class="form-control" ng-model="product_sell.quantity" required></div>
+                </div>
+                <div class="mb-3"><label class="small fw-bold text-muted">Location</label><input type="text" class="form-control" ng-model="product_sell.location" required></div>
+                <div class="mb-4"><label class="small fw-bold text-muted">Description</label><textarea class="form-control" rows="3" ng-model="product_sell.description"></textarea></div>
+                
+                <button type="submit" class="btn-success-custom w-100 rounded-pill" ng-disabled="isSubmitting">
+                    {{ isSubmitting ? 'Publishing...' : 'Post Listing' }}
+                </button>
+            </form>
+        </div>
+    </div>
+</body>
+</html>

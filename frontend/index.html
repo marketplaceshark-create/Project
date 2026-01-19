@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en" ng-app="userApp">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Agrivendia - Farm Market</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="css/styles.css" rel="stylesheet">
+    <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.8.2/angular.min.js"></script>
+    <script src="app.js"></script>
+</head>
+<body ng-controller="MarketplaceCtrl">
+
+    <div ng-include="'components/navbar.html'" ng-init="activePage='home'"></div>
+
+    <!-- CAROUSEL -->
+    <div id="heroCarousel" class="carousel slide carousel-fade" data-bs-ride="carousel">
+        <div class="carousel-indicators">
+            <button type="button" data-bs-target="#heroCarousel" data-bs-slide-to="0" class="active"></button>
+            <button type="button" data-bs-target="#heroCarousel" data-bs-slide-to="1"></button>
+            <button type="button" data-bs-target="#heroCarousel" data-bs-slide-to="2"></button>
+        </div>
+        <div class="carousel-inner">
+            <div class="carousel-item active">
+                <img src="https://images.unsplash.com/photo-1500382017468-9049fed747ef?q=80&w=1932&auto=format&fit=crop" class="d-block w-100" alt="Farm">
+                <div class="carousel-caption d-none d-md-block">
+                    <h1>Fresh From Farm</h1>
+                    <p class="fs-4">Direct marketplace connecting farmers and buyers.</p>
+                </div>
+            </div>
+            <div class="carousel-item">
+                <img src="https://images.unsplash.com/photo-1610348725531-843dff563e2c?q=80&w=1770&auto=format&fit=crop" class="d-block w-100" alt="Veg">
+                <div class="carousel-caption d-none d-md-block">
+                    <h1>Organic & Pure</h1>
+                    <p class="fs-4">Quality assured vegetables and fruits.</p>
+                </div>
+            </div>
+            <div class="carousel-item">
+                <img src="https://images.unsplash.com/photo-1586771107445-d3ca888129ff?q=80&w=1772&auto=format&fit=crop" class="d-block w-100" alt="Grains">
+                <div class="carousel-caption d-none d-md-block">
+                    <h1>Fair Pricing</h1>
+                    <p class="fs-4">Transparent rates for farmers and businesses.</p>
+                </div>
+            </div>
+        </div>
+        <button class="carousel-control-prev" type="button" data-bs-target="#heroCarousel" data-bs-slide="prev"><span class="carousel-control-prev-icon"></span></button>
+        <button class="carousel-control-next" type="button" data-bs-target="#heroCarousel" data-bs-slide="next"><span class="carousel-control-next-icon"></span></button>
+    </div>
+
+    <!-- SEARCH OVERLAP -->
+    <div class="search-overlap">
+        <form class="search-box" ng-submit="goToMarket()">
+            <input type="text" class="search-input" ng-model="searchText" placeholder="Search for onions, wheat, apples...">
+            <button type="submit" class="search-btn"><i class="bi bi-search"></i> Search</button>
+        </form>
+    </div>
+
+    <!-- MAIN CONTENT -->
+    <div class="container pb-5 mt-5">
+        <div ng-repeat="section in homeSections" ng-if="section.items.length > 0">
+            <div class="d-flex justify-content-between align-items-center mb-4 mt-5">
+                <h3 class="fw-bold text-dark">{{section.title}}</h3>
+                <a href="market.html?cat={{section.title}}" class="text-success fw-bold">View All <i class="bi bi-arrow-right"></i></a>
+            </div>
+
+            <div class="row g-4">
+                <div class="col-lg-3 col-md-4 col-sm-6" ng-repeat="p in section.items | limitTo:4">
+                    <div class="product-card" ng-click="openProduct(p)">
+                        <div class="prod-img">
+                            <i class="bi bi-box-seam"></i>
+                            <div class="prod-badge"><i class="bi bi-check-circle-fill text-success"></i> Verified</div>
+                        </div>
+                        <div class="prod-details">
+                            <div class="prod-title">{{p.productName}}</div>
+                            <div class="prod-loc"><i class="bi bi-geo-alt"></i> {{p.location}}</div>
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div class="prod-price">₹{{p.price}}</div>
+                                <small class="text-muted">{{p.quantity}} Qty</small>
+                            </div>
+                            <button class="btn-card-view">Buy Now</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="text-center py-5" ng-if="homeSections.length === 0">
+            <div class="spinner-border text-success" role="status"></div>
+            <p class="mt-2 text-muted">Loading fresh produce...</p>
+        </div>
+    </div>
+
+    <div ng-include="'components/footer.html'"></div>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en" ng-app="userApp">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Products - Agrivendia</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+    <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.8.2/angular.min.js"></script>
+    <script src="app.js"></script>
+    <style>
+        body { font-family: 'Poppins', sans-serif; background-color: #F1F8E9; }
+        .navbar { background: linear-gradient(135deg, #2E7D32 0%, #43A047 100%); box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+        .navbar-brand { font-weight: 600; letter-spacing: 0.5px; }
+        .card { border: none; border-radius: 15px; box-shadow: 0 5px 20px rgba(0,0,0,0.05); overflow: hidden; }
+        .card-header { background: white; border-bottom: 1px solid #f0f0f0; padding: 20px; font-weight: 600; color: #2E7D32; font-size: 1.1rem; }
+        .form-control { border-radius: 8px; padding: 10px 15px; border: 1px solid #e0e0e0; background-color: #f9f9f9; }
+        .form-control:focus { background-color: white; border-color: #2E7D32; box-shadow: 0 0 0 3px rgba(46, 125, 50, 0.1); }
+        .form-label { font-size: 0.85rem; font-weight: 600; color: #666; margin-bottom: 5px; text-transform: uppercase; letter-spacing: 0.5px; }
+        .btn-success { background: #2E7D32; border: none; padding: 10px 20px; border-radius: 8px; font-weight: 500; }
+        .btn-success:hover { background: #1B5E20; }
+        .table thead th { background-color: #2E7D32; color: white; font-weight: 500; border: none; padding: 15px; }
+        .table tbody td { padding: 15px; vertical-align: middle; border-bottom: 1px solid #f0f0f0; }
+        .action-btn { width: 35px; height: 35px; display: inline-flex; align-items: center; justify-content: center; border-radius: 8px; margin-left: 5px; transition: 0.2s; }
+        .btn-edit { background: #e3f2fd; color: #1976d2; border: none; } 
+        .btn-del { background: #ffebee; color: #d32f2f; border: none; }
+    </style>
+</head>
+<body class="bg-light" ng-controller="ProductCtrl">
+    <nav class="navbar navbar-expand-lg navbar-dark mb-5 sticky-top">
+        <div class="container">
+            <a class="navbar-brand" href="index.html"><i class="bi bi-arrow-left-circle me-2"></i> Dashboard</a>
+            <span class="text-white opacity-75">Products</span>
+        </div>
+    </nav>
+    <div class="container">
+        <h2 class="fw-bold text-dark mb-4">Product List</h2>
+        <div class="row g-4">
+            <div class="col-lg-4">
+                <div class="card h-100">
+                    <div class="card-header"><i class="bi bi-box-seam me-2"></i> {{ product.id ? 'Edit' : 'Add' }} Product</div>
+                    <div class="card-body p-4">
+                        <form ng-submit="saveProduct()">
+                            <div class="mb-3">
+                                <label class="form-label">Name</label>
+                                <input type="text" class="form-control" ng-model="product.productName" required>
+                            </div>
+                            <div class="mb-4">
+                                <label class="form-label">Description</label>
+                                <input type="text" class="form-control" ng-model="product.productDescription" required>
+                            </div>
+                            <button type="submit" class="btn btn-success w-100 shadow-sm">{{ product.id ? 'Update' : 'Add' }}</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-8">
+                <div class="card">
+                    <table class="table mb-0">
+                        <thead><tr><th>Name</th><th>Description</th><th class="text-end">Actions</th></tr></thead>
+                        <tbody>
+                            <tr ng-repeat="p in products">
+                                <td class="fw-bold text-dark">{{p.productName}}</td>
+                                <td class="small text-muted">{{p.productDescription}}</td>
+                                <td class="text-end">
+                                    <button class="action-btn btn-edit" ng-click="editProduct(p)"><i class="bi bi-pencil-fill"></i></button>
+                                    <button class="action-btn btn-del" ng-click="deleteProduct(p.id)"><i class="bi bi-trash-fill"></i></button>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

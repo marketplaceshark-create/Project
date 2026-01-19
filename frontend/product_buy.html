@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en" ng-app="userApp">
+<head>
+    <meta charset="UTF-8">
+    <title>Request Product - Agrivendia</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link href="css/styles.css" rel="stylesheet">
+    <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.8.2/angular.min.js"></script>
+    <script src="app.js"></script>
+</head>
+<body ng-controller="ProductBuyCtrl" style="background-color: #e3f2fd;">
+    
+    <div ng-include="'components/admin_navbar.html'"></div>
+
+    <div class="container">
+        <div class="form-card mx-auto p-4" style="max-width:600px;">
+            <h3 class="fw-bold text-center mb-4 text-primary">Post Requirement</h3>
+            <form ng-submit="saveProductBuy()">
+                <div class="row g-3 mb-3">
+                    <div class="col-6">
+                        <label class="small fw-bold text-muted">Category</label>
+                        <select class="form-select" ng-model="product_buy.category" ng-change="loadProducts()" required>
+                            <option ng-repeat="c in categories" value="{{c.id}}">{{c.name}}</option>
+                        </select>
+                    </div>
+                    <div class="col-6">
+                        <label class="small fw-bold text-muted">Product</label>
+                        <select class="form-select" ng-model="product_buy.product" required ng-disabled="!product_buy.category">
+                            <option ng-repeat="p in productsList" value="{{p.id}}">{{p.productName}}</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label class="small fw-bold text-muted">Requirements</label>
+                    <input type="text" class="form-control" ng-model="product_buy.name" placeholder="Specific variety?">
+                </div>
+                <div class="mb-3">
+                    <label class="small fw-bold text-muted">Ref Image (Optional)</label>
+                    <input type="file" class="form-control" fileread="product_buy.image" accept="image/*">
+                </div>
+                <div class="row g-3 mb-3">
+                    <div class="col-6"><label class="small fw-bold text-muted">Target Price</label><input type="number" class="form-control" ng-model="product_buy.price" required></div>
+                    <div class="col-6"><label class="small fw-bold text-muted">Qty Needed</label><input type="number" class="form-control" ng-model="product_buy.quantity" required></div>
+                </div>
+                <div class="mb-4"><label class="small fw-bold text-muted">Delivery Location</label><input type="text" class="form-control" ng-model="product_buy.location" required></div>
+                
+                <button type="submit" class="btn btn-primary w-100 rounded-pill fw-bold py-2" ng-disabled="isSubmitting">
+                    {{ isSubmitting ? 'Processing...' : 'Post Request' }}
+                </button>
+            </form>
+        </div>
+    </div>
+</body>
+</html>
