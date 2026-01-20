@@ -1,0 +1,68 @@
+<div class="dashboard-container">
+    
+    <!-- SIDEBAR -->
+    <aside class="sidebar">
+        <h3>Admin Panel</h3>
+        <nav>
+            @for (tab of tabs; track tab.id) {
+                <button 
+                    [class.active]="activeTab() === tab.id"
+                    (click)="switchTab(tab.id)">
+                    {{ tab.icon }} {{ tab.label }}
+                </button>
+            }
+        </nav>
+    </aside>
+
+    <!-- MAIN CONTENT -->
+    <main class="content">
+        <header>
+            <h2>Managing: {{ activeTab() | titlecase }}</h2>
+            <button class="btn-add">+ Add New</button> <!-- Logic to come later -->
+        </header>
+
+        <!-- TABLE -->
+        <div class="table-wrapper">
+            @if (loading()) {
+                <p>Loading data...</p>
+            } @else {
+                <table>
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Name</th> <!-- Most tables have a Name -->
+                            <th>Details</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @for (row of tableData(); track row.id) {
+                            <tr>
+                                <td>{{ row.id }}</td>
+                                
+                                <!-- Dynamic Name Binding -->
+                                <td>
+                                    {{ row.name || row.productName || 'N/A' }}
+                                </td>
+
+                                <!-- Dynamic Details -->
+                                <td>
+                                    <small>
+                                        {{ row.description || row.email || row.price }}
+                                    </small>
+                                </td>
+
+                                <td>
+                                    <button class="btn-del" (click)="deleteRow(row.id)">🗑️</button>
+                                </td>
+                            </tr>
+                        }
+                        @empty {
+                            <tr><td colspan="4">No records found.</td></tr>
+                        }
+                    </tbody>
+                </table>
+            }
+        </div>
+    </main>
+</div>
