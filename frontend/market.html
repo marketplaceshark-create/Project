@@ -59,16 +59,20 @@
                     <div class="col-md-4 col-sm-6" ng-repeat="item in filteredItems">
                         <div class="ecom-card" ng-click="openItem(item)">
                             <div class="card-img-wrap">
-                                <img ng-src="{{item.productImage}}" class="img-fluid" ng-if="item.productImage">
-                                <div ng-if="!item.productImage" class="d-flex align-items-center justify-content-center h-100 bg-light text-muted">
-                                    <i class="bi bi-image display-4"></i>
-                                </div>
+                                <!-- FIX 2: Check for uploaded image first. Prepend backend URL. Fallback to master product image. -->
+                                <img ng-src="{{item.image ? 'http://127.0.0.1:8000' + item.image : item.productImage}}" 
+                                     class="img-fluid" 
+                                     onerror="this.src='https://via.placeholder.com/300?text=No+Image'">
+                                
                                 <div class="badge-custom" ng-if="item.trusted"><i class="bi bi-patch-check-fill"></i> Verified</div>
                                 <div class="badge-custom badge-buy" ng-if="item.type === 'buy'">WANTED</div>
                             </div>
 
                             <div class="p-3 d-flex flex-column flex-grow-1">
-                                <div class="prod-title">{{item.productName}}</div>
+                                <!-- FIX 6: Use item.name (Post title) instead of item.productName (Category title) -->
+                                <div class="prod-title">{{item.name || item.productName}}</div>
+                                <div class="small text-muted mb-2">{{item.productName}}</div> <!-- Subtitle showing category -->
+
                                 <span class="d-block text-muted small mb-2"><i class="bi bi-geo-alt-fill text-danger"></i> {{item.location}}</span>
                                 <div class="bg-light rounded p-2 mb-3 mt-auto">
                                     <div class="small fw-bold text-uppercase text-muted" style="font-size:0.65rem">Stock</div>

@@ -1,15 +1,12 @@
+# Path: backend/customer/serializer.py
 from rest_framework import serializers
 from .models import Customer
+# Import the shared utility
+from agrivendia.utils import Base64ImageField
 
 class CustomerSerializer(serializers.ModelSerializer):
-    '''name = serializers.CharField(max_length = 100)
-    email = serializers.EmailField()
-    phone = serializers.CharField(max_length = 10)
-    address = serializers.CharField()
-    password = serializers.CharField(max_length=100)
-    created_at = serializers.DateTimeField(auto_now = True)'''
-
-
+    # Map the model field to the Base64 logic
+    profile_image = Base64ImageField(required=False, allow_null=True)
 
     class Meta:
         model = Customer
