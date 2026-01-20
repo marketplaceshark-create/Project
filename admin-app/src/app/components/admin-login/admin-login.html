@@ -1,0 +1,17 @@
+<div class="container mt-5" style="max-width: 400px;">
+    <div class="card p-4 shadow">
+        <h3 class="text-center mb-3">Admin Portal</h3>
+        <div class="mb-3">
+            <label>Email</label>
+            <input type="email" class="form-control" [(ngModel)]="email">
+        </div>
+        <div class="mb-3">
+            <label>Password</label>
+            <input type="password" class="form-control" [(ngModel)]="password">
+        </div>
+        <button class="btn btn-dark w-100" (click)="onLogin()">Login</button>
+        <div class="text-center mt-3">
+            <a href="/customer-login">Go to Customer Login</a>
+        </div>
+    </div>
+</div>
