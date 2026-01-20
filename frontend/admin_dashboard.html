@@ -10,8 +10,7 @@
     <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.8.2/angular.min.js"></script>
     <script src="app.js"></script>
 </head>
-<!-- FIX 1: height: 100vh ensures the flex container takes full viewport height -->
-<body ng-controller="AdminDashCtrl" style="display: flex; height: 100vh; overflow: hidden; background: #f4f6f8;">
+<body ng-controller="AdminDashCtrl" style="display: flex; overflow: hidden; background: #f4f6f8;">
 
     <!-- SIDEBAR -->
     <div class="sidebar">
@@ -26,7 +25,6 @@
     </div>
 
     <!-- MAIN CONTENT -->
-    <!-- FIX 1: overflow-y: auto handles scrolling when content exceeds 100vh -->
     <div style="flex: 1; padding: 30px; overflow-y: auto;">
         <div class="d-flex justify-content-between align-items-center mb-4">
             <h3 class="fw-bold text-dark text-capitalize">{{activeTab.replace('_', ' ')}}</h3>
@@ -56,9 +54,6 @@
                 </tbody>
             </table>
         </div>
-        
-        <!-- Spacer to ensure bottom content isn't cut off -->
-        <div style="height: 50px;"></div>
     </div>
 
     <!-- MODAL -->
@@ -73,8 +68,14 @@
                     <form id="adminForm">
                         <div class="mb-3" ng-repeat="field in currentSchema">
                             <label class="form-label small fw-bold text-muted">{{field.label}}</label>
+                            
+                            <!-- Standard Inputs -->
                             <input ng-if="field.type != 'textarea' && field.type != 'select'" type="{{field.type}}" class="form-control" ng-model="currentItem[field.key]">
+                            
+                            <!-- Textarea -->
                             <textarea ng-if="field.type == 'textarea'" class="form-control" rows="3" ng-model="currentItem[field.key]"></textarea>
+                            
+                            <!-- Dropdown (Specific logic for categories) -->
                             <select ng-if="field.type == 'select'" class="form-select" ng-model="currentItem[field.key]" ng-options="opt.id as opt.name for opt in getOptions(field.options)">
                                 <option value="">Select {{field.label}}</option>
                             </select>

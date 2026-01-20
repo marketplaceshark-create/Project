@@ -1,4 +1,3 @@
-# Path: frontend/app.js
 // Path: frontend/app.js
 var app = angular.module('userApp', []);
 
@@ -14,7 +13,7 @@ app.directive('fileread', [function () {
                         scope.fileread = loadEvent.target.result;
                     });
                 }
-                if (changeEvent.target.files && changeEvent.target.files[0]) {
+                if (changeEvent.target.files[0]) {
                     reader.readAsDataURL(changeEvent.target.files[0]);
                 }
             });
@@ -575,16 +574,13 @@ app.controller('CustomerDashCtrl', function ($scope, $http, $rootScope, $window)
     $scope.myBids = [];
     $scope.incomingBidsCount = 0;
 
-    function loadMyData() {
-        $http.get(API_URL + "product_sell/?customer_id=" + $rootScope.currentUser.id).then(function(res) {
-            $scope.myListings = res.data;
-            fetchAllBids();
-        });
-        $http.get(API_URL + "product_buy/?customer_id=" + $rootScope.currentUser.id).then(function(res) {
-            $scope.myBuyRequests = res.data;
-        });
-    }
-    loadMyData();
+    $http.get(API_URL + "product_sell/?customer_id=" + $rootScope.currentUser.id).then(function(res) {
+        $scope.myListings = res.data;
+        fetchAllBids();
+    });
+    $http.get(API_URL + "product_buy/?customer_id=" + $rootScope.currentUser.id).then(function(res) {
+        $scope.myBuyRequests = res.data;
+    });
 
     function fetchAllBids() {
         $http.get(API_URL + "product_bid/").then(function(bidRes) {
@@ -617,29 +613,6 @@ app.controller('CustomerDashCtrl', function ($scope, $http, $rootScope, $window)
     $scope.updateBid = function(bid, status) {
         $http.put(API_URL + "product_bid/" + bid.id + "/", { status: status }).then(function() {
             bid.status = status;
-        });
-    };
-    
-    // FIX 5: Delete Logic
-    $scope.deletePost = function(id, type) {
-        if(!confirm("Are you sure you want to delete this post? This action cannot be undone.")) return;
-        var endpoint = (type === 'sell') ? "product_sell/" : "product_buy/";
-        
-        $http.delete(API_URL + endpoint + id + "/").then(function() {
-            alert("Deleted successfully.");
-            loadMyData(); // Reload lists
-        }, function(err) {
-            alert("Error deleting post.");
-        });
-    };
-
-    $scope.deleteBid = function(bidId) {
-        if(!confirm("Cancel this bid?")) return;
-        $http.delete(API_URL + "product_bid/" + bidId + "/").then(function() {
-            alert("Bid cancelled.");
-            fetchAllBids(); // Reload bids
-        }, function(err) {
-            alert("Error cancelling bid.");
         });
     };
     

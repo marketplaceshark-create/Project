@@ -58,31 +58,18 @@
             <div class="listing-card feature-box p-4 sell" ng-repeat="item in myListings">
                 <div class="d-flex justify-content-between">
                     <div>
-                        <!-- FIX 4: Link to Post Details -->
-                        <h5 class="fw-bold">
-                            <a href="product_detail.html?id={{item.id}}&type=sell" class="text-dark text-decoration-none">{{item.name}}</a> 
-                            <small class="text-muted">({{item.productName}})</small>
-                        </h5>
+                        <h5 class="fw-bold">{{item.productName}} <small class="text-muted">({{item.name}})</small></h5>
                         <div class="small text-muted">{{item.quantity}} Units | ₹{{item.price}} | {{item.location}}</div>
                     </div>
-                    <div class="d-flex gap-2 align-items-center">
-                        <!-- FIX 5: Delete Button -->
-                        <button class="btn btn-sm btn-outline-danger" ng-click="deletePost(item.id, 'sell')" title="Delete Post"><i class="bi bi-trash"></i></button>
-                        
-                        <button class="btn btn-sm btn-outline-secondary rounded-pill" ng-click="item.showBids = !item.showBids">
-                            {{item.showBids ? 'Hide Offers' : 'View Offers'}}
-                            <span class="badge bg-danger rounded-pill ms-1" ng-if="getPendingBidCount(item.id, 'sell') > 0">{{getPendingBidCount(item.id, 'sell')}}</span>
-                        </button>
-                    </div>
+                    <button class="btn btn-sm btn-outline-secondary rounded-pill" ng-click="item.showBids = !item.showBids">
+                        {{item.showBids ? 'Hide Offers' : 'View Offers'}}
+                        <span class="badge bg-danger rounded-pill ms-1" ng-if="getPendingBidCount(item.id, 'sell') > 0">{{getPendingBidCount(item.id, 'sell')}}</span>
+                    </button>
                 </div>
                 <div ng-if="item.showBids" class="mt-3 border-top pt-3">
                     <div ng-repeat="bid in getBidsForProduct(item.id, 'sell')" class="bid-item d-flex justify-content-between align-items-center">
                         <div>
                             <strong>{{bid.bidder_details.name}}</strong> wants {{bid.quantity}} units at <strong class="text-success">₹{{bid.amount}}</strong>
-                            <!-- FIX 3: Show Phone on Accept -->
-                            <div ng-if="bid.status === 'ACCEPTED'" class="text-success small fw-bold mt-1">
-                                <i class="bi bi-telephone-fill"></i> {{bid.bidder_details.phone}}
-                            </div>
                         </div>
                         <div ng-if="bid.status == 'PENDING'">
                             <button class="btn btn-sm btn-success rounded-pill" ng-click="updateBid(bid, 'ACCEPTED')">Accept</button>
@@ -95,7 +82,7 @@
             </div>
         </div>
 
-        <!-- TAB CONTENT: BUY REQUESTS -->
+        <!-- TAB CONTENT: BUY REQUESTS (Reuse structure) -->
         <div ng-show="activeTab == 'requests'">
             <div class="d-flex justify-content-between mb-3">
                 <h5 class="fw-bold text-primary">Buying</h5>
@@ -104,29 +91,18 @@
             <div class="listing-card feature-box p-4 buy" ng-repeat="item in myBuyRequests">
                 <div class="d-flex justify-content-between">
                     <div>
-                        <!-- FIX 4: Link -->
-                        <h5 class="fw-bold">
-                            <a href="product_detail.html?id={{item.id}}&type=buy" class="text-dark text-decoration-none">{{item.name || 'Buy Request'}}</a>
-                        </h5>
+                        <h5 class="fw-bold">{{item.productName}}</h5>
                         <div class="small text-muted">Need {{item.quantity}} Units | Target: ₹{{item.price}} | {{item.location}}</div>
                     </div>
-                    <div class="d-flex gap-2 align-items-center">
-                         <!-- FIX 5: Delete Button -->
-                         <button class="btn btn-sm btn-outline-danger" ng-click="deletePost(item.id, 'buy')" title="Delete Request"><i class="bi bi-trash"></i></button>
-
-                        <button class="btn btn-sm btn-outline-secondary rounded-pill" ng-click="item.showBids = !item.showBids">
-                            View Sellers
-                        </button>
-                    </div>
+                    <button class="btn btn-sm btn-outline-secondary rounded-pill" ng-click="item.showBids = !item.showBids">
+                        View Sellers
+                    </button>
                 </div>
                 <div ng-if="item.showBids" class="mt-3 border-top pt-3">
+                    <!-- Similar Bid Logic for Buy Requests -->
                     <div ng-repeat="bid in getBidsForProduct(item.id, 'buy')" class="bid-item d-flex justify-content-between align-items-center">
                         <div>
                             <strong>{{bid.bidder_details.name}}</strong> offers {{bid.quantity}} units at <strong class="text-success">₹{{bid.amount}}</strong>
-                            <!-- FIX 3: Show Phone on Accept -->
-                            <div ng-if="bid.status === 'ACCEPTED'" class="text-success small fw-bold mt-1">
-                                <i class="bi bi-telephone-fill"></i> {{bid.bidder_details.phone}}
-                            </div>
                         </div>
                         <div ng-if="bid.status == 'PENDING'">
                             <button class="btn btn-sm btn-success rounded-pill" ng-click="updateBid(bid, 'ACCEPTED')">Accept</button>
@@ -144,22 +120,14 @@
             <h5 class="fw-bold mb-3">My Offers</h5>
             <div class="row">
                 <div class="col-md-6" ng-repeat="bid in myBids">
-                    <div class="feature-box p-3 mb-3 h-100 position-relative">
-                        <!-- FIX 5: Delete Bid Button -->
-                        <button class="btn btn-sm text-danger position-absolute top-0 end-0 m-2" ng-click="deleteBid(bid.id)"><i class="bi bi-x-lg"></i></button>
-                        
+                    <div class="feature-box p-3 mb-3">
                         <div class="d-flex justify-content-between">
                             <span class="fw-bold small text-muted">BID #{{bid.id}}</span>
                             <span class="badge" ng-class="{'bg-warning text-dark': bid.status=='PENDING', 'bg-success': bid.status=='ACCEPTED', 'bg-danger': bid.status=='REJECTED'}">{{bid.status}}</span>
                         </div>
                         <h5 class="mt-2">Offered: <span class="text-success fw-bold">₹{{bid.amount}}</span></h5>
                         <p class="small text-muted">For {{bid.quantity}} units</p>
-                        
-                        <!-- FIX 3: Show Seller Phone on Accept -->
-                        <div ng-if="bid.status == 'ACCEPTED'" class="alert alert-success py-2 small fw-bold">
-                            <i class="bi bi-check-circle-fill"></i> Accepted! Contact Owner: <br>
-                            <span class="fs-6"><i class="bi bi-telephone-fill"></i> {{bid.sell_post_phone || bid.buy_post_phone}}</span>
-                        </div>
+                        <div ng-if="bid.status == 'ACCEPTED'" class="alert alert-success py-1 small fw-bold">Bid Accepted! Check post for contact.</div>
                     </div>
                 </div>
             </div>
