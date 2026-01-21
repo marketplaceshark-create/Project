@@ -42,7 +42,7 @@ def combine_files(output_file, exclude_dirs, exclude_files):
 if __name__ == "__main__":
     # Settings
     output_filename = "project_code_combined.md"
-    excluded_folders = ['venv', '.git', '__pycache__', 'migrations', 'staticfiles', 'media','Media']
+    excluded_folders = ['agrivendia-frontend','venv', '.git', '__pycache__', 'migrations', 'staticfiles', 'media','Media']
     excluded_files = ['README.md', 'db.sqlite3', '.gitignore', 'merge_code.py', 'manage.py', 'project_code_combined.md', 'ReadMe.md']
     
     combine_files(output_filename, excluded_folders, excluded_files)
