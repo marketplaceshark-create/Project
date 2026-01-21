@@ -1,3 +1,4 @@
+# Path: frontend/market.html
 <!DOCTYPE html>
 <html lang="en" ng-app="userApp">
 <head>
@@ -59,8 +60,11 @@
                     <div class="col-md-4 col-sm-6" ng-repeat="item in filteredItems">
                         <div class="ecom-card" ng-click="openItem(item)">
                             <div class="card-img-wrap">
-                                <img ng-src="{{item.productImage}}" class="img-fluid" ng-if="item.productImage">
-                                <div ng-if="!item.productImage" class="d-flex align-items-center justify-content-center h-100 bg-light text-muted">
+                                <!-- FIXED: Check customer upload first (item.image), then master image -->
+                                <!-- Assumes backend URL is 'https://fresh-clouds-call.loca.lt' as per app.js -->
+                                <img ng-src="{{ item.image ? 'https://fresh-clouds-call.loca.lt' + item.image : item.productImage }}" class="img-fluid" ng-if="item.image || item.productImage">
+                                
+                                <div ng-if="!item.image && !item.productImage" class="d-flex align-items-center justify-content-center h-100 bg-light text-muted">
                                     <i class="bi bi-image display-4"></i>
                                 </div>
                                 <div class="badge-custom" ng-if="item.trusted"><i class="bi bi-patch-check-fill"></i> Verified</div>
@@ -68,7 +72,8 @@
                             </div>
 
                             <div class="p-3 d-flex flex-column flex-grow-1">
-                                <div class="prod-title">{{item.productName}}</div>
+                                <!-- FIXED: Show item.name (Post title) instead of item.productName (Master name) -->
+                                <div class="prod-title">{{item.name || item.productName}}</div>
                                 <span class="d-block text-muted small mb-2"><i class="bi bi-geo-alt-fill text-danger"></i> {{item.location}}</span>
                                 <div class="bg-light rounded p-2 mb-3 mt-auto">
                                     <div class="small fw-bold text-uppercase text-muted" style="font-size:0.65rem">Stock</div>

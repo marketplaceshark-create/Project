@@ -1,3 +1,4 @@
+# Path: frontend/admin_dashboard.html
 <!DOCTYPE html>
 <html lang="en" ng-app="userApp">
 <head>
@@ -10,7 +11,8 @@
     <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.8.2/angular.min.js"></script>
     <script src="app.js"></script>
 </head>
-<body ng-controller="AdminDashCtrl" style="display: flex; overflow: hidden; background: #f4f6f8;">
+<!-- FIXED: Added height: 100vh to ensure internal scrolling works -->
+<body ng-controller="AdminDashCtrl" style="display: flex; overflow: hidden; background: #f4f6f8; height: 100vh;">
 
     <!-- SIDEBAR -->
     <div class="sidebar">
