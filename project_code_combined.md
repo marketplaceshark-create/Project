@@ -89,7 +89,8 @@
     <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.8.2/angular.min.js"></script>
     <script src="app.js"></script>
 </head>
-<body ng-controller="AdminDashCtrl" style="display: flex; overflow: hidden; background: #f4f6f8;">
+<!-- FIXED: Added height: 100vh to ensure internal scrolling works -->
+<body ng-controller="AdminDashCtrl" style="display: flex; overflow: hidden; background: #f4f6f8; height: 100vh;">
 
     <!-- SIDEBAR -->
     <div class="sidebar">
@@ -349,6 +350,7 @@
         .listing-card.sell { border-color: #2E7D32; }
         .listing-card.buy { border-color: #0d6efd; }
         .bid-item { background: #f8f9fa; border-radius: 8px; padding: 15px; margin-top: 10px; }
+        .hover-link:hover { text-decoration: underline !important; color: #2E7D32 !important; }
     </style>
 </head>
 <body ng-controller="CustomerDashCtrl">
@@ -391,18 +393,27 @@
             <div class="listing-card feature-box p-4 sell" ng-repeat="item in myListings">
                 <div class="d-flex justify-content-between">
                     <div>
-                        <h5 class="fw-bold">{{item.productName}} <small class="text-muted">({{item.name}})</small></h5>
+                        <h5 class="fw-bold">
+                            <a href="product_detail.html?id={{item.id}}&type=sell" class="text-dark text-decoration-none hover-link">{{item.productName}} <small class="text-muted">({{item.name}})</small></a>
+                        </h5>
                         <div class="small text-muted">{{item.quantity}} Units | ₹{{item.price}} | {{item.location}}</div>
                     </div>
-                    <button class="btn btn-sm btn-outline-secondary rounded-pill" ng-click="item.showBids = !item.showBids">
-                        {{item.showBids ? 'Hide Offers' : 'View Offers'}}
-                        <span class="badge bg-danger rounded-pill ms-1" ng-if="getPendingBidCount(item.id, 'sell') > 0">{{getPendingBidCount(item.id, 'sell')}}</span>
-                    </button>
+                    <div>
+                        <!-- NEW: DELETE BUTTON -->
+                        <button class="btn btn-sm btn-outline-danger rounded-pill me-2" ng-click="deletePost(item.id, 'sell')"><i class="bi bi-trash"></i></button>
+                        <button class="btn btn-sm btn-outline-secondary rounded-pill" ng-click="item.showBids = !item.showBids">
+                            {{item.showBids ? 'Hide Offers' : 'View Offers'}}
+                            <span class="badge bg-danger rounded-pill ms-1" ng-if="getPendingBidCount(item.id, 'sell') > 0">{{getPendingBidCount(item.id, 'sell')}}</span>
+                        </button>
+                    </div>
                 </div>
                 <div ng-if="item.showBids" class="mt-3 border-top pt-3">
                     <div ng-repeat="bid in getBidsForProduct(item.id, 'sell')" class="bid-item d-flex justify-content-between align-items-center">
                         <div>
                             <strong>{{bid.bidder_details.name}}</strong> wants {{bid.quantity}} units at <strong class="text-success">₹{{bid.amount}}</strong>
+                            <div ng-if="bid.status == 'ACCEPTED'" class="mt-1 small bg-success-subtle p-2 rounded text-success border border-success">
+                                <i class="bi bi-telephone-fill"></i> Contact: {{bid.bidder_details.phone}} | {{bid.bidder_details.email}}
+                            </div>
                         </div>
                         <div ng-if="bid.status == 'PENDING'">
                             <button class="btn btn-sm btn-success rounded-pill" ng-click="updateBid(bid, 'ACCEPTED')">Accept</button>
@@ -415,7 +426,7 @@
             </div>
         </div>
 
-        <!-- TAB CONTENT: BUY REQUESTS (Reuse structure) -->
+        <!-- TAB CONTENT: BUY REQUESTS -->
         <div ng-show="activeTab == 'requests'">
             <div class="d-flex justify-content-between mb-3">
                 <h5 class="fw-bold text-primary">Buying</h5>
@@ -424,18 +435,24 @@
             <div class="listing-card feature-box p-4 buy" ng-repeat="item in myBuyRequests">
                 <div class="d-flex justify-content-between">
                     <div>
-                        <h5 class="fw-bold">{{item.productName}}</h5>
+                        <h5 class="fw-bold">
+                             <a href="product_detail.html?id={{item.id}}&type=buy" class="text-dark text-decoration-none hover-link">{{item.productName || item.name || 'General Request'}}</a>
+                        </h5>
                         <div class="small text-muted">Need {{item.quantity}} Units | Target: ₹{{item.price}} | {{item.location}}</div>
                     </div>
-                    <button class="btn btn-sm btn-outline-secondary rounded-pill" ng-click="item.showBids = !item.showBids">
-                        View Sellers
-                    </button>
+                    <div>
+                        <!-- NEW: DELETE BUTTON -->
+                        <button class="btn btn-sm btn-outline-danger rounded-pill me-2" ng-click="deletePost(item.id, 'buy')"><i class="bi bi-trash"></i></button>
+                        <button class="btn btn-sm btn-outline-secondary rounded-pill" ng-click="item.showBids = !item.showBids">View Sellers</button>
+                    </div>
                 </div>
                 <div ng-if="item.showBids" class="mt-3 border-top pt-3">
-                    <!-- Similar Bid Logic for Buy Requests -->
                     <div ng-repeat="bid in getBidsForProduct(item.id, 'buy')" class="bid-item d-flex justify-content-between align-items-center">
                         <div>
                             <strong>{{bid.bidder_details.name}}</strong> offers {{bid.quantity}} units at <strong class="text-success">₹{{bid.amount}}</strong>
+                            <div ng-if="bid.status == 'ACCEPTED'" class="mt-1 small bg-primary-subtle p-2 rounded text-primary border border-primary">
+                                <i class="bi bi-telephone-fill"></i> Contact: {{bid.bidder_details.phone}}
+                            </div>
                         </div>
                         <div ng-if="bid.status == 'PENDING'">
                             <button class="btn btn-sm btn-success rounded-pill" ng-click="updateBid(bid, 'ACCEPTED')">Accept</button>
@@ -453,14 +470,25 @@
             <h5 class="fw-bold mb-3">My Offers</h5>
             <div class="row">
                 <div class="col-md-6" ng-repeat="bid in myBids">
-                    <div class="feature-box p-3 mb-3">
+                    <div class="feature-box p-3 mb-3 h-100 position-relative">
                         <div class="d-flex justify-content-between">
                             <span class="fw-bold small text-muted">BID #{{bid.id}}</span>
                             <span class="badge" ng-class="{'bg-warning text-dark': bid.status=='PENDING', 'bg-success': bid.status=='ACCEPTED', 'bg-danger': bid.status=='REJECTED'}">{{bid.status}}</span>
                         </div>
-                        <h5 class="mt-2">Offered: <span class="text-success fw-bold">₹{{bid.amount}}</span></h5>
+                        <h5 class="mt-2">
+                             <a ng-if="bid.sell_post" href="product_detail.html?id={{bid.sell_post}}&type=sell" class="text-dark text-decoration-none hover-link">View Post <i class="bi bi-box-arrow-up-right small"></i></a>
+                             <a ng-if="bid.buy_post" href="product_detail.html?id={{bid.buy_post}}&type=buy" class="text-dark text-decoration-none hover-link">View Post <i class="bi bi-box-arrow-up-right small"></i></a>
+                        </h5>
+                        <div class="mt-2">Offered: <span class="text-success fw-bold">₹{{bid.amount}}</span></div>
                         <p class="small text-muted">For {{bid.quantity}} units</p>
-                        <div ng-if="bid.status == 'ACCEPTED'" class="alert alert-success py-1 small fw-bold">Bid Accepted! Check post for contact.</div>
+                        
+                        <div ng-if="bid.status == 'ACCEPTED'" class="alert alert-success py-2 small fw-bold">
+                            <i class="bi bi-check-circle-fill"></i> Bid Accepted!<br>
+                            <div class="mt-1 text-dark fw-normal">
+                                Call Owner: <strong>{{bid.post_owner_details.phone}}</strong><br>
+                                Name: {{bid.post_owner_details.name}}
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -638,8 +666,9 @@
                     <div class="col-md-4 col-sm-6" ng-repeat="item in filteredItems">
                         <div class="ecom-card" ng-click="openItem(item)">
                             <div class="card-img-wrap">
-                                <img ng-src="{{item.productImage}}" class="img-fluid" ng-if="item.productImage">
-                                <div ng-if="!item.productImage" class="d-flex align-items-center justify-content-center h-100 bg-light text-muted">
+                                <img ng-src="{{ getImageUrl(item) }}" class="img-fluid" ng-if="getImageUrl(item)">
+                                
+                                <div ng-if="!getImageUrl(item)" class="d-flex align-items-center justify-content-center h-100 bg-light text-muted">
                                     <i class="bi bi-image display-4"></i>
                                 </div>
                                 <div class="badge-custom" ng-if="item.trusted"><i class="bi bi-patch-check-fill"></i> Verified</div>
@@ -647,7 +676,7 @@
                             </div>
 
                             <div class="p-3 d-flex flex-column flex-grow-1">
-                                <div class="prod-title">{{item.productName}}</div>
+                                <div class="prod-title">{{item.name || item.productName}}</div>
                                 <span class="d-block text-muted small mb-2"><i class="bi bi-geo-alt-fill text-danger"></i> {{item.location}}</span>
                                 <div class="bg-light rounded p-2 mb-3 mt-auto">
                                     <div class="small fw-bold text-uppercase text-muted" style="font-size:0.65rem">Stock</div>
@@ -890,7 +919,8 @@
     <div class="container feature-box p-4" style="max-width: 1000px;">
         <div class="row">
             <div class="col-md-5">
-                <img ng-src="{{ product.image ? 'http://127.0.0.1:8000' + product.image : (product.productImage || 'https://via.placeholder.com/400') }}" class="img-fluid rounded shadow-sm w-100" style="height: 350px; object-fit: cover;">
+                <!-- UPDATED: Uses centralized helper instead of hardcoded 127.0.0.1 -->
+                <img ng-src="{{ getImageUrl(product) || 'https://via.placeholder.com/400' }}" class="img-fluid rounded shadow-sm w-100" style="height: 350px; object-fit: cover;">
             </div>
             <div class="col-md-7">
                 <h2 class="fw-bold">{{product.productName || product.buyerName}}</h2>
@@ -1120,7 +1150,16 @@
 // Path: frontend/app.js
 var app = angular.module('userApp', []);
 
-// --- 0. NEW DIRECTIVE: FILE READER ---
+// ==========================================
+// ⚙️ CONFIGURATION: CHANGE BACKEND URL HERE
+// ==========================================
+app.constant('API_CONFIG', {
+    // Keep the trailing slash!
+    //url: "https://fresh-clouds-call.loca.lt/" 
+    url: "http://127.0.0.1:8000/" // Uncomment for local dev
+});
+
+// --- 0. FILE READER DIRECTIVE ---
 app.directive('fileread', [function () {
     return {
         scope: { fileread: "=" },
@@ -1140,8 +1179,9 @@ app.directive('fileread', [function () {
     }
 }]);
 
-// --- 1. GLOBAL SESSION MANAGER ---
-app.run(function($window, $rootScope) {
+// --- 1. GLOBAL SESSION MANAGER & HELPERS ---
+app.run(function($window, $rootScope, API_CONFIG) {
+    // Session Check
     $rootScope.checkSession = function() {
         var user = $window.sessionStorage.getItem('currentUser');
         try {
@@ -1150,17 +1190,37 @@ app.run(function($window, $rootScope) {
             $rootScope.currentUser = null;
         }
     };
+
     $rootScope.logout = function() {
         $window.sessionStorage.clear();
         $rootScope.currentUser = null;
         $window.location.href = 'index.html';
     };
+
+    // GLOBAL IMAGE HELPER (Uses API_CONFIG)
+    $rootScope.getImageUrl = function(item) {
+        if (!item) return null;
+        
+        // 1. Check if user uploaded a specific image or master image exists
+        var img = item.image || item.productImage;
+        if (!img) return null;
+        
+        // 2. If it's already a full URL (http/https), return as is
+        if (img.startsWith('http')) return img;
+        
+        // 3. Otherwise, prepend backend URL from Config
+        // Remove trailing slash from config if image has leading slash to avoid double //
+        var baseUrl = API_CONFIG.url.endsWith('/') ? API_CONFIG.url.slice(0, -1) : API_CONFIG.url;
+        var imgPath = img.startsWith('/') ? img : '/' + img;
+        
+        return baseUrl + imgPath;
+    };
+
     $rootScope.checkSession();
 });
 
-// --- 2. MARKETPLACE CONTROLLER ---
-app.controller('MarketplaceCtrl', function ($scope, $http, $window, $q) {
-    var API_URL = "https://fresh-clouds-call.loca.lt/";
+// --- 2. MARKETPLACE CONTROLLER (HOME) ---
+app.controller('MarketplaceCtrl', function ($scope, $http, $window, $q, API_CONFIG) {
     $scope.searchText = ""; 
     
     $scope.goToMarket = function() {
@@ -1171,14 +1231,16 @@ app.controller('MarketplaceCtrl', function ($scope, $http, $window, $q) {
         $window.location.href = 'product_detail.html?id=' + p.id + '&type=' + p.type;
     };
 
-    var sellRequest = $http.get(API_URL + "product_sell/");
-    var buyRequest = $http.get(API_URL + "product_buy/");
+    var sellRequest = $http.get(API_CONFIG.url + "product_sell/");
+    var buyRequest = $http.get(API_CONFIG.url + "product_buy/");
 
     $q.all([sellRequest, buyRequest]).then(function (results) {
         var sales = results[0].data.map(function(item) { item.type = 'sell'; return item; });
         var buys = results[1].data.map(function(item) { 
             item.type = 'buy';
-            item.displayName = "Wanted: " + (item.productName || item.buyerName); 
+            // FIX: If name is 'General', prefer the productName (e.g. Red Onion)
+            var label = (item.name === 'General' && item.productName) ? item.productName : (item.name || item.productName || "General Item");
+            item.productName = "Wanted: " + label;
             return item;
         });
 
@@ -1194,7 +1256,8 @@ app.controller('MarketplaceCtrl', function ($scope, $http, $window, $q) {
         ];
 
         products.forEach(function(p) {
-            var name = (p.productName || "").toLowerCase();
+            // Search in both Master Name and User Defined Name
+            var name = (p.productName || "").toLowerCase() + " " + (p.name || "").toLowerCase();
             for (var i = 0; i < sections.length; i++) {
                 if (sections[i].keywords.some(function(k) { return name.includes(k); })) {
                     sections[i].items.push(p);
@@ -1206,10 +1269,9 @@ app.controller('MarketplaceCtrl', function ($scope, $http, $window, $q) {
     }
 });
 
-// --- 3. MARKET CONTROLLER ---
-app.controller('MarketCtrl', function ($scope, $http, $q, $window) {
-    var API_URL = "https://fresh-clouds-call.loca.lt/";
-    
+// --- 3. MARKET CONTROLLER (SEARCH PAGE) ---
+app.controller('MarketCtrl', function ($scope, $http, $q, $window, API_CONFIG) {
+    // 1. Initial State: 'sell' is selected by default
     $scope.filters = { type: 'sell', search: '', location: '' };
     $scope.locations = []; 
     $scope.allItems = [];
@@ -1223,27 +1285,39 @@ app.controller('MarketCtrl', function ($scope, $http, $q, $window) {
     var config = {};
     if (categoryId) config.params = { category_id: categoryId };
 
-    var sellReq = $http.get(API_URL + "product_sell/", config);
-    var buyReq = $http.get(API_URL + "product_buy/", config);
+    var sellReq = $http.get(API_CONFIG.url + "product_sell/", config);
+    var buyReq = $http.get(API_CONFIG.url + "product_buy/", config);
 
     $q.all([sellReq, buyReq]).then(function(results) {
         var sales = results[0].data.map(function(i) { i.type = 'sell'; i.trusted = true; return i; });
         var buys = results[1].data.map(function(i) { 
             i.type = 'buy'; 
-            i.productName = "Wanted: " + i.productName; 
+            
+            // --- FIX FOR "GENERAL" NAME ISSUE ---
+            // If master product exists (e.g. Red Onion), prefer that over "General".
+            var displayLabel = (i.name === 'General' && i.productName) ? i.productName : (i.name || i.productName || "General");
+            
+            // Format the string for display
+            i.productName = "Wanted: " + displayLabel;
+            
+            // Important: Set name to null if it's 'General' so the HTML {{item.name || item.productName}} 
+            // fallback mechanism picks up our new fancy productName string.
+            if(i.name === 'General') i.name = null;
+
             return i; 
         });
 
         $scope.allItems = sales.concat(buys);
-        $scope.filteredItems = $scope.allItems; 
-
+        
+        // Populate Location Filter
         var lSet = new Set();
         $scope.allItems.forEach(function(item) {
             if(item.location) lSet.add(item.location.trim());
         });
         $scope.locations = Array.from(lSet).sort();
 
-        if(searchQuery) $scope.applyFilters();
+        // FIX: Apply filters immediately so the list respects 'sell' selection on load
+        $scope.applyFilters();
     });
 
     $scope.resetFilters = function() {
@@ -1255,12 +1329,18 @@ app.controller('MarketCtrl', function ($scope, $http, $q, $window) {
         var term = f.search.toLowerCase();
 
         $scope.filteredItems = $scope.allItems.filter(function(item) {
+            // Filter by Type
             if (f.type !== 'all' && f.type && item.type !== f.type) return false;
             
-            var textMatch = (item.productName && item.productName.toLowerCase().includes(term)) || 
+            // Filter by Search (Master Name, User Name, Location)
+            var nameStr = (item.productName || "") + " " + (item.name || "");
+            
+            var textMatch = (nameStr.toLowerCase().includes(term)) || 
                             (item.location && item.location.toLowerCase().includes(term));
+            
             if (!textMatch) return false;
             
+            // Filter by Location
             if (f.location && item.location !== f.location) return false;
             return true;
         });
@@ -1273,19 +1353,18 @@ app.controller('MarketCtrl', function ($scope, $http, $q, $window) {
 });
 
 // --- 4. PRODUCT DETAIL CONTROLLER ---
-app.controller('ProductDetailCtrl', function ($scope, $http, $window, $rootScope) {
-    var API_URL = "https://fresh-clouds-call.loca.lt/";
+app.controller('ProductDetailCtrl', function ($scope, $http, $window, $rootScope, API_CONFIG) {
     var urlParams = new URLSearchParams(window.location.search);
     var id = urlParams.get('id');
     var type = urlParams.get('type') || 'sell'; 
 
-    $scope.bid = { quantity: 1, amount: "", message: "" }; // Added message
+    $scope.bid = { quantity: 1, amount: "", message: "" }; 
     $scope.bids = [];
     $scope.isOwner = false;
 
     if (id) {
         var endpoint = (type === 'buy') ? "product_buy/" : "product_sell/";
-        $http.get(API_URL + endpoint + id + "/").then(function (res) {
+        $http.get(API_CONFIG.url + endpoint + id + "/").then(function (res) {
             $scope.product = res.data;
             $scope.product.type = type;
             if ($rootScope.currentUser && $scope.product.customer == $rootScope.currentUser.id) {
@@ -1297,7 +1376,7 @@ app.controller('ProductDetailCtrl', function ($scope, $http, $window, $rootScope
 
     function loadBids() {
         var param = (type === 'buy') ? "buy_id=" : "sell_id=";
-        $http.get(API_URL + "product_bid/?" + param + id).then(function(res){
+        $http.get(API_CONFIG.url + "product_bid/?" + param + id).then(function(res){
              $scope.bids = res.data;
         });
     }
@@ -1316,13 +1395,13 @@ app.controller('ProductDetailCtrl', function ($scope, $http, $window, $rootScope
             bidder: $rootScope.currentUser.id,
             amount: $scope.bid.amount,
             quantity: $scope.bid.quantity,
-            message: $scope.bid.message || "Interested", // Send user message
+            message: $scope.bid.message || "Interested",
             status: "PENDING"
         };
         if (type === 'buy') bidData.buy_post = id;
         else bidData.sell_post = id;
 
-        $http.post(API_URL + "product_bid/", bidData).then(function() {
+        $http.post(API_CONFIG.url + "product_bid/", bidData).then(function() {
             alert("Bid Placed Successfully!");
             $scope.bid = { quantity: 1, amount: "", message: "" }; // Reset form
             loadBids();
@@ -1330,17 +1409,16 @@ app.controller('ProductDetailCtrl', function ($scope, $http, $window, $rootScope
     };
 
     $scope.updateBidStatus = function(bid, status) {
-        $http.put(API_URL + "product_bid/" + bid.id + "/", { status: status }).then(function() {
+        $http.put(API_CONFIG.url + "product_bid/" + bid.id + "/", { status: status }).then(function() {
             bid.status = status;
         });
     };
 });
 
 // --- 5. CATEGORY PAGE ---
-app.controller('CategoryPageCtrl', function ($scope, $http, $window) {
-    var API_URL = "https://fresh-clouds-call.loca.lt/";
+app.controller('CategoryPageCtrl', function ($scope, $http, $window, API_CONFIG) {
     $scope.categories = [];
-    $http.get(API_URL + "category/").then(function (res) {
+    $http.get(API_CONFIG.url + "category/").then(function (res) {
         $scope.categories = res.data;
     });
     $scope.getCategoryIcon = function(name) {
@@ -1356,20 +1434,19 @@ app.controller('CategoryPageCtrl', function ($scope, $http, $window) {
 });
 
 // --- 6. AUTH CONTROLLER ---
-app.controller('AuthCtrl', function ($scope, $http, $window) {
-    var BASE_URL = "https://fresh-clouds-call.loca.lt/";
+app.controller('AuthCtrl', function ($scope, $http, $window, API_CONFIG) {
     $scope.loginData = {};
     $scope.regData = {};
 
     $scope.loginCustomer = function () {
-        $http.post(BASE_URL + "customer/login/", $scope.loginData).then(function (res) {
+        $http.post(API_CONFIG.url + "customer/login/", $scope.loginData).then(function (res) {
             $window.sessionStorage.setItem('currentUser', JSON.stringify(res.data));
             $window.location.href = 'customer_dashboard.html';
         }, function() { alert("Invalid Credentials"); });
     };
 
     $scope.loginAdmin = function () {
-        $http.post(BASE_URL + "user/login/", $scope.loginData).then(function (res) {
+        $http.post(API_CONFIG.url + "user/login/", $scope.loginData).then(function (res) {
             var admin = res.data; 
             admin.role = 'admin';
             $window.sessionStorage.setItem('currentUser', JSON.stringify(admin));
@@ -1382,11 +1459,10 @@ app.controller('AuthCtrl', function ($scope, $http, $window) {
             alert("Passwords do not match!");
             return;
         }
-        // Remove confirm_password before sending
         var payload = angular.copy($scope.regData);
         delete payload.confirm_password;
 
-        $http.post(BASE_URL + "customer/", payload).then(function () {
+        $http.post(API_CONFIG.url + "customer/", payload).then(function () {
             alert("Registration Successful! Please Login.");
             $window.location.href = 'login.html';
         }, function(err) { 
@@ -1397,28 +1473,26 @@ app.controller('AuthCtrl', function ($scope, $http, $window) {
 });
 
 // --- 7. PLAN CONTROLLER ---
-app.controller('PlanCtrl', function ($scope, $http) {
-    $http.get("https://fresh-clouds-call.loca.lt/plan/").then(function(res){ $scope.plans = res.data; });
+app.controller('PlanCtrl', function ($scope, $http, API_CONFIG) {
+    $http.get(API_CONFIG.url + "plan/").then(function(res){ $scope.plans = res.data; });
 });
 
 // --- 8. ADMIN DASHBOARD CONTROLLER ---
-app.controller('AdminDashCtrl', function ($scope, $http, $window) {
-    var API_URL = "https://fresh-clouds-call.loca.lt/";
+app.controller('AdminDashCtrl', function ($scope, $http, $window, API_CONFIG) {
     $scope.activeTab = 'products'; 
     $scope.tableData = [];
     $scope.currentItem = {};
     $scope.currentSchema = [];
-    $scope.categories = []; // Store categories for dropdown
+    $scope.categories = []; 
 
-    // Fetch categories immediately for dropdowns
-    $http.get(API_URL + "category/").then(function(res){
+    $http.get(API_CONFIG.url + "category/").then(function(res){
         $scope.categories = res.data;
     });
 
     var schemas = {
         'products': [
             { key: 'productName', label: 'Product Name', type: 'text' },
-            { key: 'category', label: 'Category', type: 'select', options: 'categories' }, // Changed to select
+            { key: 'category', label: 'Category', type: 'select', options: 'categories' },
             { key: 'productImage', label: 'Image URL', type: 'text' },
             { key: 'productDescription', label: 'Description', type: 'textarea' }
         ],
@@ -1465,7 +1539,7 @@ app.controller('AdminDashCtrl', function ($scope, $http, $window) {
         else if(tab === 'customers') endpoint = "customer/";
         else if(tab === 'plans') endpoint = "plan/";
 
-        $http.get(API_URL + endpoint).then(function(res) {
+        $http.get(API_CONFIG.url + endpoint).then(function(res) {
             $scope.tableData = res.data;
         });
     };
@@ -1487,7 +1561,7 @@ app.controller('AdminDashCtrl', function ($scope, $http, $window) {
         else if($scope.activeTab === 'customers') modelSlug = 'customer';
         else modelSlug = 'plan';
 
-        $http.post(API_URL + "user/bulk-upload/" + modelSlug + "/", formData, {
+        $http.post(API_CONFIG.url + "user/bulk-upload/" + modelSlug + "/", formData, {
             transformRequest: angular.identity,
             headers: {'Content-Type': undefined}
         }).then(function(res) {
@@ -1522,13 +1596,13 @@ app.controller('AdminDashCtrl', function ($scope, $http, $window) {
         delete payload.created_at; 
         
         if($scope.editMode) {
-            $http.put(API_URL + endpoint + $scope.currentItem.id + "/", payload).then(function() {
+            $http.put(API_CONFIG.url + endpoint + $scope.currentItem.id + "/", payload).then(function() {
                 alert("Updated!");
                 $scope.switchTab($scope.activeTab);
                 bootstrap.Modal.getInstance(document.getElementById('editModal')).hide();
             }, function(err) { alert("Error: " + JSON.stringify(err.data)); });
         } else {
-            $http.post(API_URL + endpoint, payload).then(function() {
+            $http.post(API_CONFIG.url + endpoint, payload).then(function() {
                 alert("Created!");
                 $scope.switchTab($scope.activeTab);
                 bootstrap.Modal.getInstance(document.getElementById('editModal')).hide();
@@ -1546,30 +1620,28 @@ app.controller('AdminDashCtrl', function ($scope, $http, $window) {
         else if($scope.activeTab === 'customers') endpoint = "customer/";
         else if($scope.activeTab === 'plans') endpoint = "plan/";
 
-        $http.delete(API_URL + endpoint + id + "/").then(function() {
+        $http.delete(API_CONFIG.url + endpoint + id + "/").then(function() {
             $scope.switchTab($scope.activeTab);
         });
     };
 
-    // Helper to get dropdown options from scope
     $scope.getOptions = function(optionName) {
         return $scope[optionName] || [];
     };
 });
 
 // --- 9. POST SELL LISTING ---
-app.controller('ProductSellCtrl', function ($scope, $http, $rootScope, $window) { 
-    var API_URL = "https://fresh-clouds-call.loca.lt/";
+app.controller('ProductSellCtrl', function ($scope, $http, $rootScope, $window, API_CONFIG) { 
     $scope.product_sell = {};
     $scope.categories = []; 
     $scope.productsList = []; 
     $scope.isSubmitting = false;
 
-    $http.get(API_URL + "category/").then(function(res){ $scope.categories = res.data; });
+    $http.get(API_CONFIG.url + "category/").then(function(res){ $scope.categories = res.data; });
 
     $scope.loadProducts = function() {
         if(!$scope.product_sell.category) return;
-        $http.get(API_URL + "product/?category_id=" + $scope.product_sell.category)
+        $http.get(API_CONFIG.url + "product/?category_id=" + $scope.product_sell.category)
              .then(function(res) { $scope.productsList = res.data; });
     };
 
@@ -1584,7 +1656,7 @@ app.controller('ProductSellCtrl', function ($scope, $http, $rootScope, $window) 
         $scope.product_sell.sellerName = $rootScope.currentUser.name;
         $scope.product_sell.phoneNo = $rootScope.currentUser.phone;
 
-        $http.post(API_URL + "product_sell/", $scope.product_sell).then(function(){ 
+        $http.post(API_CONFIG.url + "product_sell/", $scope.product_sell).then(function(){ 
             alert("Success! Your produce is listed.");
             $window.location.href = "customer_dashboard.html"; 
         }, function(err){ 
@@ -1595,18 +1667,17 @@ app.controller('ProductSellCtrl', function ($scope, $http, $rootScope, $window) 
 });
 
 // --- 10. POST BUY REQUEST ---
-app.controller('ProductBuyCtrl', function ($scope, $http, $rootScope, $window) { 
-    var API_URL = "https://fresh-clouds-call.loca.lt/";
+app.controller('ProductBuyCtrl', function ($scope, $http, $rootScope, $window, API_CONFIG) { 
     $scope.product_buy = {};
     $scope.categories = []; 
     $scope.productsList = [];
     $scope.isSubmitting = false;
 
-    $http.get(API_URL + "category/").then(function(res){ $scope.categories = res.data; });
+    $http.get(API_CONFIG.url + "category/").then(function(res){ $scope.categories = res.data; });
 
     $scope.loadProducts = function() {
         if(!$scope.product_buy.category) return;
-        $http.get(API_URL + "product/?category_id=" + $scope.product_buy.category)
+        $http.get(API_CONFIG.url + "product/?category_id=" + $scope.product_buy.category)
              .then(function(res) { $scope.productsList = res.data; });
     };
 
@@ -1618,10 +1689,8 @@ app.controller('ProductBuyCtrl', function ($scope, $http, $rootScope, $window) {
         }
         $scope.isSubmitting = true;
         $scope.product_buy.customer = $rootScope.currentUser.id;
-        if(!$scope.product_buy.buyerName) {
-            $scope.product_buy.buyerName = $rootScope.currentUser.name;
-        }
-        $http.post(API_URL + "product_buy/", $scope.product_buy).then(function(){ 
+        
+        $http.post(API_CONFIG.url + "product_buy/", $scope.product_buy).then(function(){ 
             alert("Request Posted!");
             $window.location.href = "customer_dashboard.html";
         }, function(err){ 
@@ -1632,13 +1701,12 @@ app.controller('ProductBuyCtrl', function ($scope, $http, $rootScope, $window) {
 });
 
 // --- 11. USER CONTROLLER (SYSTEM ADMINS) ---
-app.controller('UserCtrl', function ($scope, $http, $window) {
-    var API_URL = "https://fresh-clouds-call.loca.lt/";
+app.controller('UserCtrl', function ($scope, $http, $window, API_CONFIG) {
     $scope.user = {};
     $scope.users = [];
 
     function loadUsers() {
-        $http.get(API_URL + "user/").then(function(res) {
+        $http.get(API_CONFIG.url + "user/").then(function(res) {
             $scope.users = res.data;
         });
     }
@@ -1646,19 +1714,19 @@ app.controller('UserCtrl', function ($scope, $http, $window) {
 
     $scope.saveUser = function() {
         if ($scope.user.id) {
-            // Edit Mode (Password Optional)
-            $http.put(API_URL + "user/" + $scope.user.id + "/", $scope.user).then(function() {
+            // Edit Mode
+            $http.put(API_CONFIG.url + "user/" + $scope.user.id + "/", $scope.user).then(function() {
                 alert("Admin updated!");
                 $scope.user = {};
                 loadUsers();
             }, function(err) { alert("Error updating admin."); });
         } else {
-            // Create Mode (Password Required)
+            // Create Mode
             if(!$scope.user.password) {
                 alert("Password is required for new admins.");
                 return;
             }
-            $http.post(API_URL + "user/", $scope.user).then(function() {
+            $http.post(API_CONFIG.url + "user/", $scope.user).then(function() {
                 alert("New Admin created!");
                 $scope.user = {};
                 loadUsers();
@@ -1668,21 +1736,20 @@ app.controller('UserCtrl', function ($scope, $http, $window) {
 
     $scope.editUser = function(u) {
         $scope.user = angular.copy(u);
-        $scope.user.password = ""; // Don't show hash, allow overwrite
+        $scope.user.password = ""; 
     };
 
     $scope.deleteUser = function(id) {
         if(confirm("Delete this admin?")) {
-            $http.delete(API_URL + "user/" + id + "/").then(function() {
+            $http.delete(API_CONFIG.url + "user/" + id + "/").then(function() {
                 loadUsers();
             });
         }
     };
 });
 
-// Customer Dashboard Controller
-app.controller('CustomerDashCtrl', function ($scope, $http, $rootScope, $window) {
-    var API_URL = "https://fresh-clouds-call.loca.lt/";
+// --- 12. CUSTOMER DASHBOARD CONTROLLER ---
+app.controller('CustomerDashCtrl', function ($scope, $http, $rootScope, $window, API_CONFIG) {
     $scope.activeTab = 'sell';
     
     if(!$rootScope.currentUser) { window.location.href = 'login.html'; return; }
@@ -1693,16 +1760,19 @@ app.controller('CustomerDashCtrl', function ($scope, $http, $rootScope, $window)
     $scope.myBids = [];
     $scope.incomingBidsCount = 0;
 
-    $http.get(API_URL + "product_sell/?customer_id=" + $rootScope.currentUser.id).then(function(res) {
-        $scope.myListings = res.data;
-        fetchAllBids();
-    });
-    $http.get(API_URL + "product_buy/?customer_id=" + $rootScope.currentUser.id).then(function(res) {
-        $scope.myBuyRequests = res.data;
-    });
+    function loadData() {
+        $http.get(API_CONFIG.url + "product_sell/?customer_id=" + $rootScope.currentUser.id).then(function(res) {
+            $scope.myListings = res.data;
+            fetchAllBids();
+        });
+        $http.get(API_CONFIG.url + "product_buy/?customer_id=" + $rootScope.currentUser.id).then(function(res) {
+            $scope.myBuyRequests = res.data;
+        });
+    }
+    loadData();
 
     function fetchAllBids() {
-        $http.get(API_URL + "product_bid/").then(function(bidRes) {
+        $http.get(API_CONFIG.url + "product_bid/").then(function(bidRes) {
             var allBids = bidRes.data;
             var mySellIds = $scope.myListings.map(p => p.id);
             var myBuyIds = $scope.myBuyRequests.map(p => p.id);
@@ -1730,9 +1800,23 @@ app.controller('CustomerDashCtrl', function ($scope, $http, $rootScope, $window)
     };
 
     $scope.updateBid = function(bid, status) {
-        $http.put(API_URL + "product_bid/" + bid.id + "/", { status: status }).then(function() {
+        $http.put(API_CONFIG.url + "product_bid/" + bid.id + "/", { status: status }).then(function() {
             bid.status = status;
         });
+    };
+
+    $scope.deletePost = function(id, type) {
+        if(!confirm("Are you sure you want to delete this listing? This action cannot be undone.")) return;
+        
+        var endpoint = (type === 'sell') ? "product_sell/" : "product_buy/";
+        
+        $http.delete(API_CONFIG.url + endpoint + id + "/?customer=" + $rootScope.currentUser.id)
+            .then(function() {
+                alert("Listing deleted.");
+                loadData(); 
+            }, function(err) {
+                alert("Error deleting: " + (err.data.error || "Server Error"));
+            });
     };
     
     $scope.logout = function() {
@@ -2647,7 +2731,7 @@ SECRET_KEY = "django-insecure-u(w&g0_8^z-i&w6zc-&@a_7@@)e$kp_fi2r0=2wc#37+fq$1fx
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['agrivendia.loca.lt','fresh-clouds-call.loca.lt','127.0.0.1',]
+ALLOWED_HOSTS = ['agrivendia.loca.lt','fresh-clouds-call.loca.lt','127.0.0.1','localhost']
 
 
 # Application definition
@@ -3594,6 +3678,7 @@ from django.test import TestCase
 ## File: backend/product_bid/serializer.py
 ```python
 # Path: backend/product_bid/serializer.py
+# Path: backend/product_bid/serializer.py
 from rest_framework import serializers
 from .models import ProductBid
 from customer.serializer import CustomerSerializer
@@ -3601,10 +3686,28 @@ from customer.serializer import CustomerSerializer
 class ProductBidSerializer(serializers.ModelSerializer):
     # Nested serializer to show bidder name in frontend easily
     bidder_details = CustomerSerializer(source='bidder', read_only=True)
+    
+    # Custom field to get the Post Owner's details (for the bidder to see)
+    post_owner_details = serializers.SerializerMethodField()
 
     class Meta:
         model = ProductBid
         fields = '__all__'
+    
+    def get_post_owner_details(self, obj):
+        # If this bid is on a Sell Post, return Seller's info
+        if obj.sell_post and obj.sell_post.customer:
+            return {
+                "name": obj.sell_post.customer.name,
+                "phone": obj.sell_post.customer.phone
+            }
+        # If this bid is on a Buy Post, return Buyer's info
+        elif obj.buy_post and obj.buy_post.customer:
+            return {
+                "name": obj.buy_post.customer.name,
+                "phone": obj.buy_post.customer.phone
+            }
+        return None
 ```
 
 ---
@@ -3676,6 +3779,7 @@ class ProductBidConfig(AppConfig):
 ## File: backend/product_bid/views.py
 ```python
 # Path: backend/product_bid/views.py
+# Path: backend/product_bid/views.py
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
@@ -3685,7 +3789,6 @@ from .serializer import ProductBidSerializer
 class ProductBidAPI(APIView):
     
     def get(self, request, id=None):
-        # Filter logic
         sell_id = request.query_params.get('sell_id')
         buy_id = request.query_params.get('buy_id')
 
@@ -3707,18 +3810,22 @@ class ProductBidAPI(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     def put(self, request, id):
-        # Used for Accepting/Rejecting Bids
         try:
             bid = ProductBid.objects.get(id=id)
         except ProductBid.DoesNotExist:
             return Response({"error": "Bid not found"}, status=status.HTTP_404_NOT_FOUND)
 
-        # Allow partial updates (e.g., just updating 'status')
-        serializer = ProductBidSerializer(bid, data=request.data, partial=True)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        # FIXED: SECURITY - Only allow updating the 'status' field via PUT
+        # This prevents users/frontend from accidentally modifying price/qty during acceptance
+        status_update = request.data.get('status')
+        if not status_update:
+            return Response({"error": "Only status updates allowed"}, status=status.HTTP_400_BAD_REQUEST)
+
+        bid.status = status_update
+        bid.save()
+        
+        serializer = ProductBidSerializer(bid)
+        return Response(serializer.data)
 ```
 
 ---
@@ -3879,6 +3986,7 @@ class ProductBuyConfig(AppConfig):
 ## File: backend/product_buy/views.py
 ```python
 # Path: backend/product_buy/views.py
+# Path: backend/product_buy/views.py
 from django.shortcuts import render
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -3889,7 +3997,6 @@ from customer.models import Customer
 
 class ProductBuyAPI(APIView):
     
-    # --- OWNERSHIP HELPER ---
     def validate_ownership(self, product_buy, request_data):
         requester_id = request_data.get('customer') or self.request.query_params.get('customer')
         if not requester_id: return False
@@ -3918,8 +4025,10 @@ class ProductBuyAPI(APIView):
 
         productsBuy = ProductBuy.objects.all()
         
+        # FIXED: Filter by direct category_id, not product__category_id
+        # This ensures General Requests (where product is Null) are included
         category_id = request.query_params.get('category_id')
-        if category_id: productsBuy = productsBuy.filter(product__category_id=category_id)
+        if category_id: productsBuy = productsBuy.filter(category_id=category_id)
 
         customer_id = request.query_params.get('customer_id')
         if customer_id: productsBuy = productsBuy.filter(customer_id=customer_id)
@@ -3948,7 +4057,7 @@ class ProductBuyAPI(APIView):
         except ProductBuy.DoesNotExist:
             return Response({"error":"Not Found"}, status=status.HTTP_404_NOT_FOUND)
         
-        if not self.validate_ownership(productBuy, request.data):
+        if not self.validate_ownership(productBuy, request.query_params):
              return Response({"error": "Permission Denied"}, status=status.HTTP_403_FORBIDDEN)
 
         productBuy.delete()
