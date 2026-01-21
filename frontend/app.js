@@ -1,6 +1,7 @@
+// Path: frontend/app.js
 var app = angular.module('userApp', []);
 
-// --- 0. FILE READER ---
+// --- 0. NEW DIRECTIVE: FILE READER ---
 app.directive('fileread', [function () {
     return {
         scope: { fileread: "=" },
@@ -20,37 +21,41 @@ app.directive('fileread', [function () {
     }
 }]);
 
-// --- 1. SESSION ---
+// --- 1. GLOBAL SESSION MANAGER & HELPERS ---
 app.run(function($window, $rootScope) {
+    // Session Check
     $rootScope.checkSession = function() {
         var user = $window.sessionStorage.getItem('currentUser');
-        try { $rootScope.currentUser = user ? JSON.parse(user) : null; } 
-        catch (e) { $rootScope.currentUser = null; }
+        try {
+            $rootScope.currentUser = user ? JSON.parse(user) : null;
+        } catch (e) {
+            $rootScope.currentUser = null;
+        }
     };
+
     $rootScope.logout = function() {
         $window.sessionStorage.clear();
         $rootScope.currentUser = null;
         $window.location.href = 'index.html';
     };
-    $rootScope.checkSession();
-});
 
-// --- Helper for Image URLs (Fixes Issue 4) ---
-app.run(function($rootScope) {
+    // Helper for Image URLs (Fixes Broken Links)
     $rootScope.getImageUrl = function(item) {
-        // 1. Check if user uploaded a specific image
+        // 1. Check if user uploaded a specific image or master image exists
         var img = item.image || item.productImage;
         if (!img) return null;
         
-        // 2. If it's a full URL (http/https), return as is
+        // 2. If it's already a full URL (http/https), return as is
         if (img.startsWith('http')) return img;
         
         // 3. Otherwise, prepend backend URL
         return "https://fresh-clouds-call.loca.lt" + img;
     };
+
+    $rootScope.checkSession();
 });
 
-// --- 2. MARKETPLACE CTRL (Home) ---
+// --- 2. MARKETPLACE CONTROLLER (HOME) ---
 app.controller('MarketplaceCtrl', function ($scope, $http, $window, $q) {
     var API_URL = "https://fresh-clouds-call.loca.lt/";
     $scope.searchText = ""; 
@@ -70,7 +75,7 @@ app.controller('MarketplaceCtrl', function ($scope, $http, $window, $q) {
         var sales = results[0].data.map(function(item) { item.type = 'sell'; return item; });
         var buys = results[1].data.map(function(item) { 
             item.type = 'buy';
-            // FIXED: Better display name logic
+            // Logic to show "Wanted: [Name]"
             item.displayName = "Wanted: " + (item.productName || item.name || "General Item"); 
             return item;
         });
@@ -87,7 +92,7 @@ app.controller('MarketplaceCtrl', function ($scope, $http, $window, $q) {
         ];
 
         products.forEach(function(p) {
-            // Check both master name and user title for keywords
+            // Search in both Master Name and User Defined Name
             var name = (p.productName || "").toLowerCase() + " " + (p.name || "").toLowerCase();
             for (var i = 0; i < sections.length; i++) {
                 if (sections[i].keywords.some(function(k) { return name.includes(k); })) {
@@ -100,7 +105,7 @@ app.controller('MarketplaceCtrl', function ($scope, $http, $window, $q) {
     }
 });
 
-// --- 3. MARKET CTRL ---
+// --- 3. MARKET CONTROLLER (SEARCH PAGE) ---
 app.controller('MarketCtrl', function ($scope, $http, $q, $window) {
     var API_URL = "https://fresh-clouds-call.loca.lt/";
     
@@ -140,7 +145,9 @@ app.controller('MarketCtrl', function ($scope, $http, $q, $window) {
         if(searchQuery) $scope.applyFilters();
     });
 
-    $scope.resetFilters = function() { $window.location.href = "market.html"; };
+    $scope.resetFilters = function() {
+        $window.location.href = "market.html";
+    };
 
     $scope.applyFilters = function() {
         var f = $scope.filters;
@@ -149,10 +156,12 @@ app.controller('MarketCtrl', function ($scope, $http, $q, $window) {
         $scope.filteredItems = $scope.allItems.filter(function(item) {
             if (f.type !== 'all' && f.type && item.type !== f.type) return false;
             
-            // Search both master name and user title
+            // Search in both Master Name and User Name
             var nameStr = (item.productName || "") + " " + (item.name || "");
+            
             var textMatch = (nameStr.toLowerCase().includes(term)) || 
                             (item.location && item.location.toLowerCase().includes(term));
+            
             if (!textMatch) return false;
             
             if (f.location && item.location !== f.location) return false;
@@ -166,14 +175,14 @@ app.controller('MarketCtrl', function ($scope, $http, $q, $window) {
     };
 });
 
-// --- 4. PRODUCT DETAIL CTRL ---
+// --- 4. PRODUCT DETAIL CONTROLLER ---
 app.controller('ProductDetailCtrl', function ($scope, $http, $window, $rootScope) {
     var API_URL = "https://fresh-clouds-call.loca.lt/";
     var urlParams = new URLSearchParams(window.location.search);
     var id = urlParams.get('id');
     var type = urlParams.get('type') || 'sell'; 
 
-    $scope.bid = { quantity: 1, amount: "", message: "" };
+    $scope.bid = { quantity: 1, amount: "", message: "" }; 
     $scope.bids = [];
     $scope.isOwner = false;
 
@@ -218,7 +227,7 @@ app.controller('ProductDetailCtrl', function ($scope, $http, $window, $rootScope
 
         $http.post(API_URL + "product_bid/", bidData).then(function() {
             alert("Bid Placed Successfully!");
-            $scope.bid = { quantity: 1, amount: "", message: "" };
+            $scope.bid = { quantity: 1, amount: "", message: "" }; // Reset form
             loadBids();
         }, function() { alert("Error placing bid. Please try again."); });
     };
@@ -230,7 +239,346 @@ app.controller('ProductDetailCtrl', function ($scope, $http, $window, $rootScope
     };
 });
 
-// --- 5. CUSTOMER DASHBOARD CTRL (CRUD ADDED) ---
+// --- 5. CATEGORY PAGE ---
+app.controller('CategoryPageCtrl', function ($scope, $http, $window) {
+    var API_URL = "https://fresh-clouds-call.loca.lt/";
+    $scope.categories = [];
+    $http.get(API_URL + "category/").then(function (res) {
+        $scope.categories = res.data;
+    });
+    $scope.getCategoryIcon = function(name) {
+        var n = (name || "").toLowerCase();
+        if (n.includes("veg")) return "bi-flower3";
+        if (n.includes("fruit")) return "bi-apple";
+        if (n.includes("grain")) return "bi-cloud-haze2"; 
+        return "bi-box-seam";
+    };
+    $scope.goToMarket = function(cat) {
+        $window.location.href = 'market.html?category_id=' + cat.id;
+    };
+});
+
+// --- 6. AUTH CONTROLLER ---
+app.controller('AuthCtrl', function ($scope, $http, $window) {
+    var BASE_URL = "https://fresh-clouds-call.loca.lt/";
+    $scope.loginData = {};
+    $scope.regData = {};
+
+    $scope.loginCustomer = function () {
+        $http.post(BASE_URL + "customer/login/", $scope.loginData).then(function (res) {
+            $window.sessionStorage.setItem('currentUser', JSON.stringify(res.data));
+            $window.location.href = 'customer_dashboard.html';
+        }, function() { alert("Invalid Credentials"); });
+    };
+
+    $scope.loginAdmin = function () {
+        $http.post(BASE_URL + "user/login/", $scope.loginData).then(function (res) {
+            var admin = res.data; 
+            admin.role = 'admin';
+            $window.sessionStorage.setItem('currentUser', JSON.stringify(admin));
+            $window.location.href = 'admin_dashboard.html';
+        }, function() { alert("Access Denied"); });
+    };
+
+    $scope.register = function () {
+        if ($scope.regData.password !== $scope.regData.confirm_password) {
+            alert("Passwords do not match!");
+            return;
+        }
+        var payload = angular.copy($scope.regData);
+        delete payload.confirm_password;
+
+        $http.post(BASE_URL + "customer/", payload).then(function () {
+            alert("Registration Successful! Please Login.");
+            $window.location.href = 'login.html';
+        }, function(err) { 
+            var msg = err.data.email ? "Email already exists." : "Registration Failed.";
+            alert(msg); 
+        });
+    };
+});
+
+// --- 7. PLAN CONTROLLER ---
+app.controller('PlanCtrl', function ($scope, $http) {
+    $http.get("https://fresh-clouds-call.loca.lt/plan/").then(function(res){ $scope.plans = res.data; });
+});
+
+// --- 8. ADMIN DASHBOARD CONTROLLER ---
+app.controller('AdminDashCtrl', function ($scope, $http, $window) {
+    var API_URL = "https://fresh-clouds-call.loca.lt/";
+    $scope.activeTab = 'products'; 
+    $scope.tableData = [];
+    $scope.currentItem = {};
+    $scope.currentSchema = [];
+    $scope.categories = []; 
+
+    $http.get(API_URL + "category/").then(function(res){
+        $scope.categories = res.data;
+    });
+
+    var schemas = {
+        'products': [
+            { key: 'productName', label: 'Product Name', type: 'text' },
+            { key: 'category', label: 'Category', type: 'select', options: 'categories' },
+            { key: 'productImage', label: 'Image URL', type: 'text' },
+            { key: 'productDescription', label: 'Description', type: 'textarea' }
+        ],
+        'categories': [
+            { key: 'name', label: 'Category Name', type: 'text' },
+            { key: 'description', label: 'Description', type: 'text' },
+            { key: 'image_url', label: 'Image URL', type: 'text' }
+        ],
+        'products_sell': [
+            { key: 'product', label: 'Product ID', type: 'number' },
+            { key: 'customer', label: 'Seller ID', type: 'number' },
+            { key: 'price', label: 'Price', type: 'number' },
+            { key: 'quantity', label: 'Quantity', type: 'number' },
+            { key: 'location', label: 'Location', type: 'text' }
+        ],
+        'products_buy': [
+            { key: 'product', label: 'Product ID', type: 'number' },
+            { key: 'customer', label: 'Buyer ID', type: 'number' },
+            { key: 'price', label: 'Target Price', type: 'number' },
+            { key: 'quantity', label: 'Quantity', type: 'number' },
+            { key: 'buyerName', label: 'Buyer Name', type: 'text' }
+        ],
+        'customers': [
+            { key: 'name', label: 'Full Name', type: 'text' },
+            { key: 'email', label: 'Email', type: 'email' },
+            { key: 'phone', label: 'Phone', type: 'text' },
+            { key: 'address', label: 'Address', type: 'text' }
+        ],
+        'plans': [
+            { key: 'name', label: 'Plan Name', type: 'text' },
+            { key: 'price', label: 'Price', type: 'text' }
+        ]
+    };
+
+    $scope.switchTab = function(tab) {
+        $scope.activeTab = tab;
+        $scope.currentSchema = schemas[tab];
+        
+        var endpoint = "";
+        if(tab === 'products') endpoint = "product/";
+        else if(tab === 'products_sell') endpoint = "product_sell/";
+        else if(tab === 'products_buy') endpoint = "product_buy/";
+        else if(tab === 'categories') endpoint = "category/";
+        else if(tab === 'customers') endpoint = "customer/";
+        else if(tab === 'plans') endpoint = "plan/";
+
+        $http.get(API_URL + endpoint).then(function(res) {
+            $scope.tableData = res.data;
+        });
+    };
+    
+    $scope.switchTab('products');
+
+    $scope.uploadCSV = function() {
+        var fileInput = document.getElementById('csvFile');
+        if(fileInput.files.length === 0) { alert("Select file"); return; }
+        
+        var formData = new FormData();
+        formData.append('file', fileInput.files[0]);
+
+        var modelSlug = "";
+        if($scope.activeTab === 'products') modelSlug = 'product';
+        else if($scope.activeTab === 'products_sell') modelSlug = 'product_sell';
+        else if($scope.activeTab === 'products_buy') modelSlug = 'product_buy';
+        else if($scope.activeTab === 'categories') modelSlug = 'category';
+        else if($scope.activeTab === 'customers') modelSlug = 'customer';
+        else modelSlug = 'plan';
+
+        $http.post(API_URL + "user/bulk-upload/" + modelSlug + "/", formData, {
+            transformRequest: angular.identity,
+            headers: {'Content-Type': undefined}
+        }).then(function(res) {
+            alert(res.data.message);
+            if(res.data.errors.length) alert("Errors:\n" + res.data.errors.join("\n"));
+            $scope.switchTab($scope.activeTab); 
+        }, function(err) { alert("Upload Failed: " + err.data.error); });
+    };
+
+    $scope.openAdd = function() {
+        $scope.editMode = false;
+        $scope.currentItem = {};
+        $scope.currentSchema = schemas[$scope.activeTab];
+    };
+    
+    $scope.editRow = function(row) {
+        $scope.editMode = true;
+        $scope.currentItem = angular.copy(row);
+        $scope.currentSchema = schemas[$scope.activeTab];
+    };
+    
+    $scope.saveRow = function() {
+        var endpoint = "";
+        if($scope.activeTab === 'products') endpoint = "product/";
+        else if($scope.activeTab === 'products_sell') endpoint = "product_sell/";
+        else if($scope.activeTab === 'products_buy') endpoint = "product_buy/";
+        else if($scope.activeTab === 'categories') endpoint = "category/";
+        else if($scope.activeTab === 'customers') endpoint = "customer/";
+        else if($scope.activeTab === 'plans') endpoint = "plan/";
+
+        var payload = angular.copy($scope.currentItem);
+        delete payload.created_at; 
+        
+        if($scope.editMode) {
+            $http.put(API_URL + endpoint + $scope.currentItem.id + "/", payload).then(function() {
+                alert("Updated!");
+                $scope.switchTab($scope.activeTab);
+                bootstrap.Modal.getInstance(document.getElementById('editModal')).hide();
+            }, function(err) { alert("Error: " + JSON.stringify(err.data)); });
+        } else {
+            $http.post(API_URL + endpoint, payload).then(function() {
+                alert("Created!");
+                $scope.switchTab($scope.activeTab);
+                bootstrap.Modal.getInstance(document.getElementById('editModal')).hide();
+            }, function(err) { alert("Error: " + JSON.stringify(err.data)); });
+        }
+    };
+    
+    $scope.deleteRow = function(id) {
+        if(!confirm("Are you sure?")) return;
+        var endpoint = "";
+        if($scope.activeTab === 'products') endpoint = "product/";
+        else if($scope.activeTab === 'products_sell') endpoint = "product_sell/";
+        else if($scope.activeTab === 'products_buy') endpoint = "product_buy/";
+        else if($scope.activeTab === 'categories') endpoint = "category/";
+        else if($scope.activeTab === 'customers') endpoint = "customer/";
+        else if($scope.activeTab === 'plans') endpoint = "plan/";
+
+        $http.delete(API_URL + endpoint + id + "/").then(function() {
+            $scope.switchTab($scope.activeTab);
+        });
+    };
+
+    $scope.getOptions = function(optionName) {
+        return $scope[optionName] || [];
+    };
+});
+
+// --- 9. POST SELL LISTING ---
+app.controller('ProductSellCtrl', function ($scope, $http, $rootScope, $window) { 
+    var API_URL = "https://fresh-clouds-call.loca.lt/";
+    $scope.product_sell = {};
+    $scope.categories = []; 
+    $scope.productsList = []; 
+    $scope.isSubmitting = false;
+
+    $http.get(API_URL + "category/").then(function(res){ $scope.categories = res.data; });
+
+    $scope.loadProducts = function() {
+        if(!$scope.product_sell.category) return;
+        $http.get(API_URL + "product/?category_id=" + $scope.product_sell.category)
+             .then(function(res) { $scope.productsList = res.data; });
+    };
+
+    $scope.saveProductSell = function() {
+        if(!$rootScope.currentUser) {
+            alert("Please login.");
+            $window.location.href = "login.html";
+            return;
+        }
+        $scope.isSubmitting = true;
+        $scope.product_sell.customer = $rootScope.currentUser.id;
+        $scope.product_sell.sellerName = $rootScope.currentUser.name;
+        $scope.product_sell.phoneNo = $rootScope.currentUser.phone;
+
+        $http.post(API_URL + "product_sell/", $scope.product_sell).then(function(){ 
+            alert("Success! Your produce is listed.");
+            $window.location.href = "customer_dashboard.html"; 
+        }, function(err){ 
+            alert("Error posting product. Check your connection or image size."); 
+            $scope.isSubmitting = false;
+        });
+    };
+});
+
+// --- 10. POST BUY REQUEST ---
+app.controller('ProductBuyCtrl', function ($scope, $http, $rootScope, $window) { 
+    var API_URL = "https://fresh-clouds-call.loca.lt/";
+    $scope.product_buy = {};
+    $scope.categories = []; 
+    $scope.productsList = [];
+    $scope.isSubmitting = false;
+
+    $http.get(API_URL + "category/").then(function(res){ $scope.categories = res.data; });
+
+    $scope.loadProducts = function() {
+        if(!$scope.product_buy.category) return;
+        $http.get(API_URL + "product/?category_id=" + $scope.product_buy.category)
+             .then(function(res) { $scope.productsList = res.data; });
+    };
+
+    $scope.saveProductBuy = function() {
+        if(!$rootScope.currentUser) {
+            alert("Please login.");
+            $window.location.href = "login.html";
+            return;
+        }
+        $scope.isSubmitting = true;
+        $scope.product_buy.customer = $rootScope.currentUser.id;
+        
+        $http.post(API_URL + "product_buy/", $scope.product_buy).then(function(){ 
+            alert("Request Posted!");
+            $window.location.href = "customer_dashboard.html";
+        }, function(err){ 
+            alert("Error posting request."); 
+            $scope.isSubmitting = false;
+        });
+    };
+});
+
+// --- 11. USER CONTROLLER (SYSTEM ADMINS) ---
+app.controller('UserCtrl', function ($scope, $http, $window) {
+    var API_URL = "https://fresh-clouds-call.loca.lt/";
+    $scope.user = {};
+    $scope.users = [];
+
+    function loadUsers() {
+        $http.get(API_URL + "user/").then(function(res) {
+            $scope.users = res.data;
+        });
+    }
+    loadUsers();
+
+    $scope.saveUser = function() {
+        if ($scope.user.id) {
+            // Edit Mode
+            $http.put(API_URL + "user/" + $scope.user.id + "/", $scope.user).then(function() {
+                alert("Admin updated!");
+                $scope.user = {};
+                loadUsers();
+            }, function(err) { alert("Error updating admin."); });
+        } else {
+            // Create Mode
+            if(!$scope.user.password) {
+                alert("Password is required for new admins.");
+                return;
+            }
+            $http.post(API_URL + "user/", $scope.user).then(function() {
+                alert("New Admin created!");
+                $scope.user = {};
+                loadUsers();
+            }, function(err) { alert("Error creating admin."); });
+        }
+    };
+
+    $scope.editUser = function(u) {
+        $scope.user = angular.copy(u);
+        $scope.user.password = ""; 
+    };
+
+    $scope.deleteUser = function(id) {
+        if(confirm("Delete this admin?")) {
+            $http.delete(API_URL + "user/" + id + "/").then(function() {
+                loadUsers();
+            });
+        }
+    };
+});
+
+// --- 12. CUSTOMER DASHBOARD CONTROLLER ---
 app.controller('CustomerDashCtrl', function ($scope, $http, $rootScope, $window) {
     var API_URL = "https://fresh-clouds-call.loca.lt/";
     $scope.activeTab = 'sell';
@@ -294,7 +642,7 @@ app.controller('CustomerDashCtrl', function ($scope, $http, $rootScope, $window)
         
         var endpoint = (type === 'sell') ? "product_sell/" : "product_buy/";
         
-        // Pass customer param for ownership validation
+        // Pass customer param for ownership validation check on backend
         $http.delete(API_URL + endpoint + id + "/?customer=" + $rootScope.currentUser.id)
             .then(function() {
                 alert("Listing deleted.");
@@ -308,132 +656,4 @@ app.controller('CustomerDashCtrl', function ($scope, $http, $rootScope, $window)
         $window.sessionStorage.clear();
         $window.location.href = 'index.html';
     };
-});
-
-// --- REMAINING CONTROLLERS (Unchanged but needed for file completeness) ---
-app.controller('CategoryPageCtrl', function ($scope, $http, $window) {
-    var API_URL = "https://fresh-clouds-call.loca.lt/";
-    $scope.categories = [];
-    $http.get(API_URL + "category/").then(function (res) { $scope.categories = res.data; });
-    $scope.getCategoryIcon = function(name) {
-        var n = (name || "").toLowerCase();
-        if (n.includes("veg")) return "bi-flower3";
-        if (n.includes("fruit")) return "bi-apple";
-        if (n.includes("grain")) return "bi-cloud-haze2"; 
-        return "bi-box-seam";
-    };
-    $scope.goToMarket = function(cat) { $window.location.href = 'market.html?category_id=' + cat.id; };
-});
-
-app.controller('AuthCtrl', function ($scope, $http, $window) {
-    var BASE_URL = "https://fresh-clouds-call.loca.lt/";
-    $scope.loginData = {};
-    $scope.regData = {};
-    $scope.loginCustomer = function () {
-        $http.post(BASE_URL + "customer/login/", $scope.loginData).then(function (res) {
-            $window.sessionStorage.setItem('currentUser', JSON.stringify(res.data));
-            $window.location.href = 'customer_dashboard.html';
-        }, function() { alert("Invalid Credentials"); });
-    };
-    $scope.loginAdmin = function () {
-        $http.post(BASE_URL + "user/login/", $scope.loginData).then(function (res) {
-            var admin = res.data; admin.role = 'admin';
-            $window.sessionStorage.setItem('currentUser', JSON.stringify(admin));
-            $window.location.href = 'admin_dashboard.html';
-        }, function() { alert("Access Denied"); });
-    };
-    $scope.register = function () {
-        if ($scope.regData.password !== $scope.regData.confirm_password) { alert("Passwords do not match!"); return; }
-        var payload = angular.copy($scope.regData); delete payload.confirm_password;
-        $http.post(BASE_URL + "customer/", payload).then(function () {
-            alert("Registration Successful! Please Login.");
-            $window.location.href = 'login.html';
-        }, function(err) { var msg = err.data.email ? "Email already exists." : "Registration Failed."; alert(msg); });
-    };
-});
-
-app.controller('PlanCtrl', function ($scope, $http) {
-    $http.get("https://fresh-clouds-call.loca.lt/plan/").then(function(res){ $scope.plans = res.data; });
-});
-
-app.controller('AdminDashCtrl', function ($scope, $http, $window) {
-    var API_URL = "https://fresh-clouds-call.loca.lt/";
-    $scope.activeTab = 'products'; $scope.tableData = []; $scope.currentItem = {}; $scope.currentSchema = []; $scope.categories = [];
-    $http.get(API_URL + "category/").then(function(res){ $scope.categories = res.data; });
-
-    var schemas = {
-        'products': [{ key: 'productName', label: 'Product Name', type: 'text' }, { key: 'category', label: 'Category', type: 'select', options: 'categories' }, { key: 'productImage', label: 'Image URL', type: 'text' }, { key: 'productDescription', label: 'Description', type: 'textarea' }],
-        'categories': [{ key: 'name', label: 'Category Name', type: 'text' }, { key: 'description', label: 'Description', type: 'text' }, { key: 'image_url', label: 'Image URL', type: 'text' }],
-        'products_sell': [{ key: 'product', label: 'Product ID', type: 'number' }, { key: 'customer', label: 'Seller ID', type: 'number' }, { key: 'price', label: 'Price', type: 'number' }, { key: 'quantity', label: 'Quantity', type: 'number' }, { key: 'location', label: 'Location', type: 'text' }],
-        'products_buy': [{ key: 'product', label: 'Product ID', type: 'number' }, { key: 'customer', label: 'Buyer ID', type: 'number' }, { key: 'price', label: 'Target Price', type: 'number' }, { key: 'quantity', label: 'Quantity', type: 'number' }, { key: 'buyerName', label: 'Buyer Name', type: 'text' }],
-        'customers': [{ key: 'name', label: 'Full Name', type: 'text' }, { key: 'email', label: 'Email', type: 'email' }, { key: 'phone', label: 'Phone', type: 'text' }, { key: 'address', label: 'Address', type: 'text' }],
-        'plans': [{ key: 'name', label: 'Plan Name', type: 'text' }, { key: 'price', label: 'Price', type: 'text' }]
-    };
-
-    $scope.switchTab = function(tab) {
-        $scope.activeTab = tab; $scope.currentSchema = schemas[tab];
-        var endpoint = (tab === 'products') ? "product/" : (tab === 'products_sell') ? "product_sell/" : (tab === 'products_buy') ? "product_buy/" : (tab === 'categories') ? "category/" : (tab === 'customers') ? "customer/" : "plan/";
-        $http.get(API_URL + endpoint).then(function(res) { $scope.tableData = res.data; });
-    };
-    $scope.switchTab('products');
-
-    $scope.uploadCSV = function() {
-        var fileInput = document.getElementById('csvFile'); if(fileInput.files.length === 0) { alert("Select file"); return; }
-        var formData = new FormData(); formData.append('file', fileInput.files[0]);
-        var modelSlug = ($scope.activeTab === 'products') ? 'product' : ($scope.activeTab === 'products_sell') ? 'product_sell' : ($scope.activeTab === 'products_buy') ? 'product_buy' : ($scope.activeTab === 'categories') ? 'category' : ($scope.activeTab === 'customers') ? 'customer' : 'plan';
-        $http.post(API_URL + "user/bulk-upload/" + modelSlug + "/", formData, { transformRequest: angular.identity, headers: {'Content-Type': undefined} }).then(function(res) {
-            alert(res.data.message); if(res.data.errors.length) alert("Errors:\n" + res.data.errors.join("\n")); $scope.switchTab($scope.activeTab); 
-        }, function(err) { alert("Upload Failed: " + err.data.error); });
-    };
-
-    $scope.openAdd = function() { $scope.editMode = false; $scope.currentItem = {}; $scope.currentSchema = schemas[$scope.activeTab]; };
-    $scope.editRow = function(row) { $scope.editMode = true; $scope.currentItem = angular.copy(row); $scope.currentSchema = schemas[$scope.activeTab]; };
-    $scope.saveRow = function() {
-        var endpoint = ($scope.activeTab === 'products') ? "product/" : ($scope.activeTab === 'products_sell') ? "product_sell/" : ($scope.activeTab === 'products_buy') ? "product_buy/" : ($scope.activeTab === 'categories') ? "category/" : ($scope.activeTab === 'customers') ? "customer/" : "plan/";
-        var payload = angular.copy($scope.currentItem); delete payload.created_at; 
-        if($scope.editMode) {
-            $http.put(API_URL + endpoint + $scope.currentItem.id + "/", payload).then(function() { alert("Updated!"); $scope.switchTab($scope.activeTab); bootstrap.Modal.getInstance(document.getElementById('editModal')).hide(); }, function(err) { alert("Error: " + JSON.stringify(err.data)); });
-        } else {
-            $http.post(API_URL + endpoint, payload).then(function() { alert("Created!"); $scope.switchTab($scope.activeTab); bootstrap.Modal.getInstance(document.getElementById('editModal')).hide(); }, function(err) { alert("Error: " + JSON.stringify(err.data)); });
-        }
-    };
-    $scope.deleteRow = function(id) {
-        if(!confirm("Are you sure?")) return;
-        var endpoint = ($scope.activeTab === 'products') ? "product/" : ($scope.activeTab === 'products_sell') ? "product_sell/" : ($scope.activeTab === 'products_buy') ? "product_buy/" : ($scope.activeTab === 'categories') ? "category/" : ($scope.activeTab === 'customers') ? "customer/" : "plan/";
-        $http.delete(API_URL + endpoint + id + "/").then(function() { $scope.switchTab($scope.activeTab); });
-    };
-    $scope.getOptions = function(optionName) { return $scope[optionName] || []; };
-});
-
-app.controller('ProductSellCtrl', function ($scope, $http, $rootScope, $window) { 
-    var API_URL = "https://fresh-clouds-call.loca.lt/"; $scope.product_sell = {}; $scope.categories = []; $scope.productsList = []; $scope.isSubmitting = false;
-    $http.get(API_URL + "category/").then(function(res){ $scope.categories = res.data; });
-    $scope.loadProducts = function() { if(!$scope.product_sell.category) return; $http.get(API_URL + "product/?category_id=" + $scope.product_sell.category).then(function(res) { $scope.productsList = res.data; }); };
-    $scope.saveProductSell = function() {
-        if(!$rootScope.currentUser) { alert("Please login."); $window.location.href = "login.html"; return; }
-        $scope.isSubmitting = true; $scope.product_sell.customer = $rootScope.currentUser.id; $scope.product_sell.sellerName = $rootScope.currentUser.name; $scope.product_sell.phoneNo = $rootScope.currentUser.phone;
-        $http.post(API_URL + "product_sell/", $scope.product_sell).then(function(){ alert("Success! Your produce is listed."); $window.location.href = "customer_dashboard.html"; }, function(err){ alert("Error posting product. Check your connection or image size."); $scope.isSubmitting = false; });
-    };
-});
-
-app.controller('ProductBuyCtrl', function ($scope, $http, $rootScope, $window) { 
-    var API_URL = "https://fresh-clouds-call.loca.lt/"; $scope.product_buy = {}; $scope.categories = []; $scope.productsList = []; $scope.isSubmitting = false;
-    $http.get(API_URL + "category/").then(function(res){ $scope.categories = res.data; });
-    $scope.loadProducts = function() { if(!$scope.product_buy.category) return; $http.get(API_URL + "product/?category_id=" + $scope.product_buy.category).then(function(res) { $scope.productsList = res.data; }); };
-    $scope.saveProductBuy = function() {
-        if(!$rootScope.currentUser) { alert("Please login."); $window.location.href = "login.html"; return; }
-        $scope.isSubmitting = true; $scope.product_buy.customer = $rootScope.currentUser.id;
-        $http.post(API_URL + "product_buy/", $scope.product_buy).then(function(){ alert("Request Posted!"); $window.location.href = "customer_dashboard.html"; }, function(err){ alert("Error posting request."); $scope.isSubmitting = false; });
-    };
-});
-
-app.controller('UserCtrl', function ($scope, $http, $window) {
-    var API_URL = "https://fresh-clouds-call.loca.lt/"; $scope.user = {}; $scope.users = [];
-    function loadUsers() { $http.get(API_URL + "user/").then(function(res) { $scope.users = res.data; }); } loadUsers();
-    $scope.saveUser = function() {
-        if ($scope.user.id) { $http.put(API_URL + "user/" + $scope.user.id + "/", $scope.user).then(function() { alert("Admin updated!"); $scope.user = {}; loadUsers(); }, function(err) { alert("Error updating admin."); }); } 
-        else { if(!$scope.user.password) { alert("Password is required for new admins."); return; } $http.post(API_URL + "user/", $scope.user).then(function() { alert("New Admin created!"); $scope.user = {}; loadUsers(); }, function(err) { alert("Error creating admin."); }); }
-    };
-    $scope.editUser = function(u) { $scope.user = angular.copy(u); $scope.user.password = ""; };
-    $scope.deleteUser = function(id) { if(confirm("Delete this admin?")) { $http.delete(API_URL + "user/" + id + "/").then(function() { loadUsers(); }); } };
 });
