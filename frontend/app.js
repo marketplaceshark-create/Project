@@ -6,8 +6,8 @@ var app = angular.module('userApp', []);
 // ==========================================
 app.constant('API_CONFIG', {
     // Keep the trailing slash!
-    url: "https://fresh-clouds-call.loca.lt/" 
-    // url: "http://127.0.0.1:8000/" // Uncomment for local dev
+    //url: "https://fresh-clouds-call.loca.lt/" 
+    url: "http://127.0.0.1:8000/" // Uncomment for local dev
 });
 
 // --- 0. FILE READER DIRECTIVE ---
