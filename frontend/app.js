@@ -5,8 +5,8 @@ var app = angular.module('userApp', []);
 // ⚙️ CONFIGURATION
 // ==========================================
 app.constant('API_CONFIG', {
-    url: "https://fresh-clouds-call.loca.lt/" 
-    // url: "http://127.0.0.1:8000/" // Local
+    //url: "https://fresh-clouds-call.loca.lt/" 
+    url: "http://127.0.0.1:8000/" // Local
 });
 
 // --- 0. UTILS ---
