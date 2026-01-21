@@ -41,7 +41,7 @@ app.run(function($window, $rootScope) {
 
 // --- 2. MARKETPLACE CONTROLLER ---
 app.controller('MarketplaceCtrl', function ($scope, $http, $window, $q) {
-    var API_URL = "http://127.0.0.1:8000/";
+    var API_URL = "https://fresh-clouds-call.loca.lt/";
     $scope.searchText = ""; 
     
     $scope.goToMarket = function() {
@@ -89,7 +89,7 @@ app.controller('MarketplaceCtrl', function ($scope, $http, $window, $q) {
 
 // --- 3. MARKET CONTROLLER ---
 app.controller('MarketCtrl', function ($scope, $http, $q, $window) {
-    var API_URL = "http://127.0.0.1:8000/";
+    var API_URL = "https://fresh-clouds-call.loca.lt/";
     
     $scope.filters = { type: 'sell', search: '', location: '' };
     $scope.locations = []; 
@@ -155,7 +155,7 @@ app.controller('MarketCtrl', function ($scope, $http, $q, $window) {
 
 // --- 4. PRODUCT DETAIL CONTROLLER ---
 app.controller('ProductDetailCtrl', function ($scope, $http, $window, $rootScope) {
-    var API_URL = "http://127.0.0.1:8000/";
+    var API_URL = "https://fresh-clouds-call.loca.lt/";
     var urlParams = new URLSearchParams(window.location.search);
     var id = urlParams.get('id');
     var type = urlParams.get('type') || 'sell'; 
@@ -219,7 +219,7 @@ app.controller('ProductDetailCtrl', function ($scope, $http, $window, $rootScope
 
 // --- 5. CATEGORY PAGE ---
 app.controller('CategoryPageCtrl', function ($scope, $http, $window) {
-    var API_URL = "http://127.0.0.1:8000/";
+    var API_URL = "https://fresh-clouds-call.loca.lt/";
     $scope.categories = [];
     $http.get(API_URL + "category/").then(function (res) {
         $scope.categories = res.data;
@@ -238,7 +238,7 @@ app.controller('CategoryPageCtrl', function ($scope, $http, $window) {
 
 // --- 6. AUTH CONTROLLER ---
 app.controller('AuthCtrl', function ($scope, $http, $window) {
-    var BASE_URL = "http://127.0.0.1:8000/";
+    var BASE_URL = "https://fresh-clouds-call.loca.lt/";
     $scope.loginData = {};
     $scope.regData = {};
 
@@ -279,12 +279,12 @@ app.controller('AuthCtrl', function ($scope, $http, $window) {
 
 // --- 7. PLAN CONTROLLER ---
 app.controller('PlanCtrl', function ($scope, $http) {
-    $http.get("http://127.0.0.1:8000/plan/").then(function(res){ $scope.plans = res.data; });
+    $http.get("https://fresh-clouds-call.loca.lt/plan/").then(function(res){ $scope.plans = res.data; });
 });
 
 // --- 8. ADMIN DASHBOARD CONTROLLER ---
 app.controller('AdminDashCtrl', function ($scope, $http, $window) {
-    var API_URL = "http://127.0.0.1:8000/";
+    var API_URL = "https://fresh-clouds-call.loca.lt/";
     $scope.activeTab = 'products'; 
     $scope.tableData = [];
     $scope.currentItem = {};
@@ -440,7 +440,7 @@ app.controller('AdminDashCtrl', function ($scope, $http, $window) {
 
 // --- 9. POST SELL LISTING ---
 app.controller('ProductSellCtrl', function ($scope, $http, $rootScope, $window) { 
-    var API_URL = "http://127.0.0.1:8000/";
+    var API_URL = "https://fresh-clouds-call.loca.lt/";
     $scope.product_sell = {};
     $scope.categories = []; 
     $scope.productsList = []; 
@@ -477,7 +477,7 @@ app.controller('ProductSellCtrl', function ($scope, $http, $rootScope, $window) 
 
 // --- 10. POST BUY REQUEST ---
 app.controller('ProductBuyCtrl', function ($scope, $http, $rootScope, $window) { 
-    var API_URL = "http://127.0.0.1:8000/";
+    var API_URL = "https://fresh-clouds-call.loca.lt/";
     $scope.product_buy = {};
     $scope.categories = []; 
     $scope.productsList = [];
@@ -514,7 +514,7 @@ app.controller('ProductBuyCtrl', function ($scope, $http, $rootScope, $window) {
 
 // --- 11. USER CONTROLLER (SYSTEM ADMINS) ---
 app.controller('UserCtrl', function ($scope, $http, $window) {
-    var API_URL = "http://127.0.0.1:8000/";
+    var API_URL = "https://fresh-clouds-call.loca.lt/";
     $scope.user = {};
     $scope.users = [];
 
@@ -563,7 +563,7 @@ app.controller('UserCtrl', function ($scope, $http, $window) {
 
 // Customer Dashboard Controller
 app.controller('CustomerDashCtrl', function ($scope, $http, $rootScope, $window) {
-    var API_URL = "http://127.0.0.1:8000/";
+    var API_URL = "https://fresh-clouds-call.loca.lt/";
     $scope.activeTab = 'sell';
     
     if(!$rootScope.currentUser) { window.location.href = 'login.html'; return; }
