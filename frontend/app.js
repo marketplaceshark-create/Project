@@ -1,3 +1,4 @@
+// Path: frontend/app.js
 var app = angular.module('userApp', []);
 
 // ==========================================
@@ -5,8 +6,8 @@ var app = angular.module('userApp', []);
 // ==========================================
 app.constant('API_CONFIG', {
     // Keep the trailing slash!
-    //url: "https://fresh-clouds-call.loca.lt/" 
-    url: "http://127.0.0.1:8000/" // Uncomment for local dev
+    url: "https://fresh-clouds-call.loca.lt/" 
+    // url: "http://127.0.0.1:8000/" // Uncomment for local dev
 });
 
 // --- 0. FILE READER DIRECTIVE ---
@@ -88,7 +89,9 @@ app.controller('MarketplaceCtrl', function ($scope, $http, $window, $q, API_CONF
         var sales = results[0].data.map(function(item) { item.type = 'sell'; return item; });
         var buys = results[1].data.map(function(item) { 
             item.type = 'buy';
-            item.displayName = "Wanted: " + (item.productName || item.name || "General Item"); 
+            // FIX: If name is 'General', prefer the productName (e.g. Red Onion)
+            var label = (item.name === 'General' && item.productName) ? item.productName : (item.name || item.productName || "General Item");
+            item.productName = "Wanted: " + label;
             return item;
         });
 
@@ -140,7 +143,18 @@ app.controller('MarketCtrl', function ($scope, $http, $q, $window, API_CONFIG) {
         var sales = results[0].data.map(function(i) { i.type = 'sell'; i.trusted = true; return i; });
         var buys = results[1].data.map(function(i) { 
             i.type = 'buy'; 
-            i.productName = "Wanted: " + (i.productName || i.name || "General"); 
+            
+            // --- FIX FOR "GENERAL" NAME ISSUE ---
+            // If master product exists (e.g. Red Onion), prefer that over "General".
+            var displayLabel = (i.name === 'General' && i.productName) ? i.productName : (i.name || i.productName || "General");
+            
+            // Format the string for display
+            i.productName = "Wanted: " + displayLabel;
+            
+            // Important: Set name to null if it's 'General' so the HTML {{item.name || item.productName}} 
+            // fallback mechanism picks up our new fancy productName string.
+            if(i.name === 'General') i.name = null;
+
             return i; 
         });
 
