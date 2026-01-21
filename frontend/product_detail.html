@@ -17,7 +17,8 @@
     <div class="container feature-box p-4" style="max-width: 1000px;">
         <div class="row">
             <div class="col-md-5">
-                <img ng-src="{{ product.image ? 'http://127.0.0.1:8000' + product.image : (product.productImage || 'https://via.placeholder.com/400') }}" class="img-fluid rounded shadow-sm w-100" style="height: 350px; object-fit: cover;">
+                <!-- UPDATED: Uses centralized helper instead of hardcoded 127.0.0.1 -->
+                <img ng-src="{{ getImageUrl(product) || 'https://via.placeholder.com/400' }}" class="img-fluid rounded shadow-sm w-100" style="height: 350px; object-fit: cover;">
             </div>
             <div class="col-md-7">
                 <h2 class="fw-bold">{{product.productName || product.buyerName}}</h2>

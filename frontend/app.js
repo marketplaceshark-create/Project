@@ -1,7 +1,15 @@
-// Path: frontend/app.js
 var app = angular.module('userApp', []);
 
-// --- 0. NEW DIRECTIVE: FILE READER ---
+// ==========================================
+// ⚙️ CONFIGURATION: CHANGE BACKEND URL HERE
+// ==========================================
+app.constant('API_CONFIG', {
+    // Keep the trailing slash!
+    url: "https://fresh-clouds-call.loca.lt/" 
+    // url: "http://127.0.0.1:8000/" // Uncomment for local dev
+});
+
+// --- 0. FILE READER ---
 app.directive('fileread', [function () {
     return {
         scope: { fileread: "=" },
@@ -21,9 +29,8 @@ app.directive('fileread', [function () {
     }
 }]);
 
-// --- 1. GLOBAL SESSION MANAGER & HELPERS ---
-app.run(function($window, $rootScope) {
-    // Session Check
+// --- 1. GLOBAL SESSION & HELPERS ---
+app.run(function($window, $rootScope, API_CONFIG) {
     $rootScope.checkSession = function() {
         var user = $window.sessionStorage.getItem('currentUser');
         try {
@@ -39,8 +46,10 @@ app.run(function($window, $rootScope) {
         $window.location.href = 'index.html';
     };
 
-    // Helper for Image URLs (Fixes Broken Links)
+    // GLOBAL IMAGE HELPER (Uses API_CONFIG)
     $rootScope.getImageUrl = function(item) {
+        if (!item) return null;
+        
         // 1. Check if user uploaded a specific image or master image exists
         var img = item.image || item.productImage;
         if (!img) return null;
@@ -48,16 +57,19 @@ app.run(function($window, $rootScope) {
         // 2. If it's already a full URL (http/https), return as is
         if (img.startsWith('http')) return img;
         
-        // 3. Otherwise, prepend backend URL
-        return "https://fresh-clouds-call.loca.lt" + img;
+        // 3. Otherwise, prepend backend URL from Config
+        // Remove trailing slash from config if image has leading slash to avoid double //
+        var baseUrl = API_CONFIG.url.endsWith('/') ? API_CONFIG.url.slice(0, -1) : API_CONFIG.url;
+        var imgPath = img.startsWith('/') ? img : '/' + img;
+        
+        return baseUrl + imgPath;
     };
 
     $rootScope.checkSession();
 });
 
 // --- 2. MARKETPLACE CONTROLLER (HOME) ---
-app.controller('MarketplaceCtrl', function ($scope, $http, $window, $q) {
-    var API_URL = "https://fresh-clouds-call.loca.lt/";
+app.controller('MarketplaceCtrl', function ($scope, $http, $window, $q, API_CONFIG) {
     $scope.searchText = ""; 
     
     $scope.goToMarket = function() {
@@ -68,14 +80,13 @@ app.controller('MarketplaceCtrl', function ($scope, $http, $window, $q) {
         $window.location.href = 'product_detail.html?id=' + p.id + '&type=' + p.type;
     };
 
-    var sellRequest = $http.get(API_URL + "product_sell/");
-    var buyRequest = $http.get(API_URL + "product_buy/");
+    var sellRequest = $http.get(API_CONFIG.url + "product_sell/");
+    var buyRequest = $http.get(API_CONFIG.url + "product_buy/");
 
     $q.all([sellRequest, buyRequest]).then(function (results) {
         var sales = results[0].data.map(function(item) { item.type = 'sell'; return item; });
         var buys = results[1].data.map(function(item) { 
             item.type = 'buy';
-            // Logic to show "Wanted: [Name]"
             item.displayName = "Wanted: " + (item.productName || item.name || "General Item"); 
             return item;
         });
@@ -92,7 +103,6 @@ app.controller('MarketplaceCtrl', function ($scope, $http, $window, $q) {
         ];
 
         products.forEach(function(p) {
-            // Search in both Master Name and User Defined Name
             var name = (p.productName || "").toLowerCase() + " " + (p.name || "").toLowerCase();
             for (var i = 0; i < sections.length; i++) {
                 if (sections[i].keywords.some(function(k) { return name.includes(k); })) {
@@ -106,9 +116,7 @@ app.controller('MarketplaceCtrl', function ($scope, $http, $window, $q) {
 });
 
 // --- 3. MARKET CONTROLLER (SEARCH PAGE) ---
-app.controller('MarketCtrl', function ($scope, $http, $q, $window) {
-    var API_URL = "https://fresh-clouds-call.loca.lt/";
-    
+app.controller('MarketCtrl', function ($scope, $http, $q, $window, API_CONFIG) {
     $scope.filters = { type: 'sell', search: '', location: '' };
     $scope.locations = []; 
     $scope.allItems = [];
@@ -122,8 +130,8 @@ app.controller('MarketCtrl', function ($scope, $http, $q, $window) {
     var config = {};
     if (categoryId) config.params = { category_id: categoryId };
 
-    var sellReq = $http.get(API_URL + "product_sell/", config);
-    var buyReq = $http.get(API_URL + "product_buy/", config);
+    var sellReq = $http.get(API_CONFIG.url + "product_sell/", config);
+    var buyReq = $http.get(API_CONFIG.url + "product_buy/", config);
 
     $q.all([sellReq, buyReq]).then(function(results) {
         var sales = results[0].data.map(function(i) { i.type = 'sell'; i.trusted = true; return i; });
@@ -145,25 +153,17 @@ app.controller('MarketCtrl', function ($scope, $http, $q, $window) {
         if(searchQuery) $scope.applyFilters();
     });
 
-    $scope.resetFilters = function() {
-        $window.location.href = "market.html";
-    };
+    $scope.resetFilters = function() { $window.location.href = "market.html"; };
 
     $scope.applyFilters = function() {
         var f = $scope.filters;
         var term = f.search.toLowerCase();
-
         $scope.filteredItems = $scope.allItems.filter(function(item) {
             if (f.type !== 'all' && f.type && item.type !== f.type) return false;
-            
-            // Search in both Master Name and User Name
             var nameStr = (item.productName || "") + " " + (item.name || "");
-            
             var textMatch = (nameStr.toLowerCase().includes(term)) || 
                             (item.location && item.location.toLowerCase().includes(term));
-            
             if (!textMatch) return false;
-            
             if (f.location && item.location !== f.location) return false;
             return true;
         });
@@ -176,8 +176,7 @@ app.controller('MarketCtrl', function ($scope, $http, $q, $window) {
 });
 
 // --- 4. PRODUCT DETAIL CONTROLLER ---
-app.controller('ProductDetailCtrl', function ($scope, $http, $window, $rootScope) {
-    var API_URL = "https://fresh-clouds-call.loca.lt/";
+app.controller('ProductDetailCtrl', function ($scope, $http, $window, $rootScope, API_CONFIG) {
     var urlParams = new URLSearchParams(window.location.search);
     var id = urlParams.get('id');
     var type = urlParams.get('type') || 'sell'; 
@@ -188,7 +187,7 @@ app.controller('ProductDetailCtrl', function ($scope, $http, $window, $rootScope
 
     if (id) {
         var endpoint = (type === 'buy') ? "product_buy/" : "product_sell/";
-        $http.get(API_URL + endpoint + id + "/").then(function (res) {
+        $http.get(API_CONFIG.url + endpoint + id + "/").then(function (res) {
             $scope.product = res.data;
             $scope.product.type = type;
             if ($rootScope.currentUser && $scope.product.customer == $rootScope.currentUser.id) {
@@ -200,7 +199,7 @@ app.controller('ProductDetailCtrl', function ($scope, $http, $window, $rootScope
 
     function loadBids() {
         var param = (type === 'buy') ? "buy_id=" : "sell_id=";
-        $http.get(API_URL + "product_bid/?" + param + id).then(function(res){
+        $http.get(API_CONFIG.url + "product_bid/?" + param + id).then(function(res){
              $scope.bids = res.data;
         });
     }
@@ -225,25 +224,24 @@ app.controller('ProductDetailCtrl', function ($scope, $http, $window, $rootScope
         if (type === 'buy') bidData.buy_post = id;
         else bidData.sell_post = id;
 
-        $http.post(API_URL + "product_bid/", bidData).then(function() {
+        $http.post(API_CONFIG.url + "product_bid/", bidData).then(function() {
             alert("Bid Placed Successfully!");
-            $scope.bid = { quantity: 1, amount: "", message: "" }; // Reset form
+            $scope.bid = { quantity: 1, amount: "", message: "" };
             loadBids();
         }, function() { alert("Error placing bid. Please try again."); });
     };
 
     $scope.updateBidStatus = function(bid, status) {
-        $http.put(API_URL + "product_bid/" + bid.id + "/", { status: status }).then(function() {
+        $http.put(API_CONFIG.url + "product_bid/" + bid.id + "/", { status: status }).then(function() {
             bid.status = status;
         });
     };
 });
 
 // --- 5. CATEGORY PAGE ---
-app.controller('CategoryPageCtrl', function ($scope, $http, $window) {
-    var API_URL = "https://fresh-clouds-call.loca.lt/";
+app.controller('CategoryPageCtrl', function ($scope, $http, $window, API_CONFIG) {
     $scope.categories = [];
-    $http.get(API_URL + "category/").then(function (res) {
+    $http.get(API_CONFIG.url + "category/").then(function (res) {
         $scope.categories = res.data;
     });
     $scope.getCategoryIcon = function(name) {
@@ -259,20 +257,19 @@ app.controller('CategoryPageCtrl', function ($scope, $http, $window) {
 });
 
 // --- 6. AUTH CONTROLLER ---
-app.controller('AuthCtrl', function ($scope, $http, $window) {
-    var BASE_URL = "https://fresh-clouds-call.loca.lt/";
+app.controller('AuthCtrl', function ($scope, $http, $window, API_CONFIG) {
     $scope.loginData = {};
     $scope.regData = {};
 
     $scope.loginCustomer = function () {
-        $http.post(BASE_URL + "customer/login/", $scope.loginData).then(function (res) {
+        $http.post(API_CONFIG.url + "customer/login/", $scope.loginData).then(function (res) {
             $window.sessionStorage.setItem('currentUser', JSON.stringify(res.data));
             $window.location.href = 'customer_dashboard.html';
         }, function() { alert("Invalid Credentials"); });
     };
 
     $scope.loginAdmin = function () {
-        $http.post(BASE_URL + "user/login/", $scope.loginData).then(function (res) {
+        $http.post(API_CONFIG.url + "user/login/", $scope.loginData).then(function (res) {
             var admin = res.data; 
             admin.role = 'admin';
             $window.sessionStorage.setItem('currentUser', JSON.stringify(admin));
@@ -288,7 +285,7 @@ app.controller('AuthCtrl', function ($scope, $http, $window) {
         var payload = angular.copy($scope.regData);
         delete payload.confirm_password;
 
-        $http.post(BASE_URL + "customer/", payload).then(function () {
+        $http.post(API_CONFIG.url + "customer/", payload).then(function () {
             alert("Registration Successful! Please Login.");
             $window.location.href = 'login.html';
         }, function(err) { 
@@ -299,20 +296,19 @@ app.controller('AuthCtrl', function ($scope, $http, $window) {
 });
 
 // --- 7. PLAN CONTROLLER ---
-app.controller('PlanCtrl', function ($scope, $http) {
-    $http.get("https://fresh-clouds-call.loca.lt/plan/").then(function(res){ $scope.plans = res.data; });
+app.controller('PlanCtrl', function ($scope, $http, API_CONFIG) {
+    $http.get(API_CONFIG.url + "plan/").then(function(res){ $scope.plans = res.data; });
 });
 
 // --- 8. ADMIN DASHBOARD CONTROLLER ---
-app.controller('AdminDashCtrl', function ($scope, $http, $window) {
-    var API_URL = "https://fresh-clouds-call.loca.lt/";
+app.controller('AdminDashCtrl', function ($scope, $http, $window, API_CONFIG) {
     $scope.activeTab = 'products'; 
     $scope.tableData = [];
     $scope.currentItem = {};
     $scope.currentSchema = [];
     $scope.categories = []; 
 
-    $http.get(API_URL + "category/").then(function(res){
+    $http.get(API_CONFIG.url + "category/").then(function(res){
         $scope.categories = res.data;
     });
 
@@ -366,7 +362,7 @@ app.controller('AdminDashCtrl', function ($scope, $http, $window) {
         else if(tab === 'customers') endpoint = "customer/";
         else if(tab === 'plans') endpoint = "plan/";
 
-        $http.get(API_URL + endpoint).then(function(res) {
+        $http.get(API_CONFIG.url + endpoint).then(function(res) {
             $scope.tableData = res.data;
         });
     };
@@ -388,7 +384,7 @@ app.controller('AdminDashCtrl', function ($scope, $http, $window) {
         else if($scope.activeTab === 'customers') modelSlug = 'customer';
         else modelSlug = 'plan';
 
-        $http.post(API_URL + "user/bulk-upload/" + modelSlug + "/", formData, {
+        $http.post(API_CONFIG.url + "user/bulk-upload/" + modelSlug + "/", formData, {
             transformRequest: angular.identity,
             headers: {'Content-Type': undefined}
         }).then(function(res) {
@@ -423,13 +419,13 @@ app.controller('AdminDashCtrl', function ($scope, $http, $window) {
         delete payload.created_at; 
         
         if($scope.editMode) {
-            $http.put(API_URL + endpoint + $scope.currentItem.id + "/", payload).then(function() {
+            $http.put(API_CONFIG.url + endpoint + $scope.currentItem.id + "/", payload).then(function() {
                 alert("Updated!");
                 $scope.switchTab($scope.activeTab);
                 bootstrap.Modal.getInstance(document.getElementById('editModal')).hide();
             }, function(err) { alert("Error: " + JSON.stringify(err.data)); });
         } else {
-            $http.post(API_URL + endpoint, payload).then(function() {
+            $http.post(API_CONFIG.url + endpoint, payload).then(function() {
                 alert("Created!");
                 $scope.switchTab($scope.activeTab);
                 bootstrap.Modal.getInstance(document.getElementById('editModal')).hide();
@@ -447,7 +443,7 @@ app.controller('AdminDashCtrl', function ($scope, $http, $window) {
         else if($scope.activeTab === 'customers') endpoint = "customer/";
         else if($scope.activeTab === 'plans') endpoint = "plan/";
 
-        $http.delete(API_URL + endpoint + id + "/").then(function() {
+        $http.delete(API_CONFIG.url + endpoint + id + "/").then(function() {
             $scope.switchTab($scope.activeTab);
         });
     };
@@ -458,18 +454,17 @@ app.controller('AdminDashCtrl', function ($scope, $http, $window) {
 });
 
 // --- 9. POST SELL LISTING ---
-app.controller('ProductSellCtrl', function ($scope, $http, $rootScope, $window) { 
-    var API_URL = "https://fresh-clouds-call.loca.lt/";
+app.controller('ProductSellCtrl', function ($scope, $http, $rootScope, $window, API_CONFIG) { 
     $scope.product_sell = {};
     $scope.categories = []; 
     $scope.productsList = []; 
     $scope.isSubmitting = false;
 
-    $http.get(API_URL + "category/").then(function(res){ $scope.categories = res.data; });
+    $http.get(API_CONFIG.url + "category/").then(function(res){ $scope.categories = res.data; });
 
     $scope.loadProducts = function() {
         if(!$scope.product_sell.category) return;
-        $http.get(API_URL + "product/?category_id=" + $scope.product_sell.category)
+        $http.get(API_CONFIG.url + "product/?category_id=" + $scope.product_sell.category)
              .then(function(res) { $scope.productsList = res.data; });
     };
 
@@ -484,7 +479,7 @@ app.controller('ProductSellCtrl', function ($scope, $http, $rootScope, $window) 
         $scope.product_sell.sellerName = $rootScope.currentUser.name;
         $scope.product_sell.phoneNo = $rootScope.currentUser.phone;
 
-        $http.post(API_URL + "product_sell/", $scope.product_sell).then(function(){ 
+        $http.post(API_CONFIG.url + "product_sell/", $scope.product_sell).then(function(){ 
             alert("Success! Your produce is listed.");
             $window.location.href = "customer_dashboard.html"; 
         }, function(err){ 
@@ -495,18 +490,17 @@ app.controller('ProductSellCtrl', function ($scope, $http, $rootScope, $window) 
 });
 
 // --- 10. POST BUY REQUEST ---
-app.controller('ProductBuyCtrl', function ($scope, $http, $rootScope, $window) { 
-    var API_URL = "https://fresh-clouds-call.loca.lt/";
+app.controller('ProductBuyCtrl', function ($scope, $http, $rootScope, $window, API_CONFIG) { 
     $scope.product_buy = {};
     $scope.categories = []; 
     $scope.productsList = [];
     $scope.isSubmitting = false;
 
-    $http.get(API_URL + "category/").then(function(res){ $scope.categories = res.data; });
+    $http.get(API_CONFIG.url + "category/").then(function(res){ $scope.categories = res.data; });
 
     $scope.loadProducts = function() {
         if(!$scope.product_buy.category) return;
-        $http.get(API_URL + "product/?category_id=" + $scope.product_buy.category)
+        $http.get(API_CONFIG.url + "product/?category_id=" + $scope.product_buy.category)
              .then(function(res) { $scope.productsList = res.data; });
     };
 
@@ -519,7 +513,7 @@ app.controller('ProductBuyCtrl', function ($scope, $http, $rootScope, $window) {
         $scope.isSubmitting = true;
         $scope.product_buy.customer = $rootScope.currentUser.id;
         
-        $http.post(API_URL + "product_buy/", $scope.product_buy).then(function(){ 
+        $http.post(API_CONFIG.url + "product_buy/", $scope.product_buy).then(function(){ 
             alert("Request Posted!");
             $window.location.href = "customer_dashboard.html";
         }, function(err){ 
@@ -530,13 +524,12 @@ app.controller('ProductBuyCtrl', function ($scope, $http, $rootScope, $window) {
 });
 
 // --- 11. USER CONTROLLER (SYSTEM ADMINS) ---
-app.controller('UserCtrl', function ($scope, $http, $window) {
-    var API_URL = "https://fresh-clouds-call.loca.lt/";
+app.controller('UserCtrl', function ($scope, $http, $window, API_CONFIG) {
     $scope.user = {};
     $scope.users = [];
 
     function loadUsers() {
-        $http.get(API_URL + "user/").then(function(res) {
+        $http.get(API_CONFIG.url + "user/").then(function(res) {
             $scope.users = res.data;
         });
     }
@@ -545,7 +538,7 @@ app.controller('UserCtrl', function ($scope, $http, $window) {
     $scope.saveUser = function() {
         if ($scope.user.id) {
             // Edit Mode
-            $http.put(API_URL + "user/" + $scope.user.id + "/", $scope.user).then(function() {
+            $http.put(API_CONFIG.url + "user/" + $scope.user.id + "/", $scope.user).then(function() {
                 alert("Admin updated!");
                 $scope.user = {};
                 loadUsers();
@@ -556,7 +549,7 @@ app.controller('UserCtrl', function ($scope, $http, $window) {
                 alert("Password is required for new admins.");
                 return;
             }
-            $http.post(API_URL + "user/", $scope.user).then(function() {
+            $http.post(API_CONFIG.url + "user/", $scope.user).then(function() {
                 alert("New Admin created!");
                 $scope.user = {};
                 loadUsers();
@@ -571,7 +564,7 @@ app.controller('UserCtrl', function ($scope, $http, $window) {
 
     $scope.deleteUser = function(id) {
         if(confirm("Delete this admin?")) {
-            $http.delete(API_URL + "user/" + id + "/").then(function() {
+            $http.delete(API_CONFIG.url + "user/" + id + "/").then(function() {
                 loadUsers();
             });
         }
@@ -579,8 +572,7 @@ app.controller('UserCtrl', function ($scope, $http, $window) {
 });
 
 // --- 12. CUSTOMER DASHBOARD CONTROLLER ---
-app.controller('CustomerDashCtrl', function ($scope, $http, $rootScope, $window) {
-    var API_URL = "https://fresh-clouds-call.loca.lt/";
+app.controller('CustomerDashCtrl', function ($scope, $http, $rootScope, $window, API_CONFIG) {
     $scope.activeTab = 'sell';
     
     if(!$rootScope.currentUser) { window.location.href = 'login.html'; return; }
@@ -592,18 +584,18 @@ app.controller('CustomerDashCtrl', function ($scope, $http, $rootScope, $window)
     $scope.incomingBidsCount = 0;
 
     function loadData() {
-        $http.get(API_URL + "product_sell/?customer_id=" + $rootScope.currentUser.id).then(function(res) {
+        $http.get(API_CONFIG.url + "product_sell/?customer_id=" + $rootScope.currentUser.id).then(function(res) {
             $scope.myListings = res.data;
             fetchAllBids();
         });
-        $http.get(API_URL + "product_buy/?customer_id=" + $rootScope.currentUser.id).then(function(res) {
+        $http.get(API_CONFIG.url + "product_buy/?customer_id=" + $rootScope.currentUser.id).then(function(res) {
             $scope.myBuyRequests = res.data;
         });
     }
     loadData();
 
     function fetchAllBids() {
-        $http.get(API_URL + "product_bid/").then(function(bidRes) {
+        $http.get(API_CONFIG.url + "product_bid/").then(function(bidRes) {
             var allBids = bidRes.data;
             var mySellIds = $scope.myListings.map(p => p.id);
             var myBuyIds = $scope.myBuyRequests.map(p => p.id);
@@ -631,22 +623,20 @@ app.controller('CustomerDashCtrl', function ($scope, $http, $rootScope, $window)
     };
 
     $scope.updateBid = function(bid, status) {
-        $http.put(API_URL + "product_bid/" + bid.id + "/", { status: status }).then(function() {
+        $http.put(API_CONFIG.url + "product_bid/" + bid.id + "/", { status: status }).then(function() {
             bid.status = status;
         });
     };
 
-    // --- NEW: DELETE FUNCTIONALITY ---
     $scope.deletePost = function(id, type) {
         if(!confirm("Are you sure you want to delete this listing? This action cannot be undone.")) return;
         
         var endpoint = (type === 'sell') ? "product_sell/" : "product_buy/";
         
-        // Pass customer param for ownership validation check on backend
-        $http.delete(API_URL + endpoint + id + "/?customer=" + $rootScope.currentUser.id)
+        $http.delete(API_CONFIG.url + endpoint + id + "/?customer=" + $rootScope.currentUser.id)
             .then(function() {
                 alert("Listing deleted.");
-                loadData(); // Refresh list
+                loadData(); 
             }, function(err) {
                 alert("Error deleting: " + (err.data.error || "Server Error"));
             });
