@@ -59,7 +59,6 @@
                     <div class="col-md-4 col-sm-6" ng-repeat="item in filteredItems">
                         <div class="ecom-card" ng-click="openItem(item)">
                             <div class="card-img-wrap">
-                                <!-- FIXED: Uses centralized helper instead of hardcoded backend URL -->
                                 <img ng-src="{{ getImageUrl(item) }}" class="img-fluid" ng-if="getImageUrl(item)">
                                 
                                 <div ng-if="!getImageUrl(item)" class="d-flex align-items-center justify-content-center h-100 bg-light text-muted">

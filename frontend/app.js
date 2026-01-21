@@ -9,7 +9,7 @@ app.constant('API_CONFIG', {
     // url: "http://127.0.0.1:8000/" // Uncomment for local dev
 });
 
-// --- 0. FILE READER ---
+// --- 0. FILE READER DIRECTIVE ---
 app.directive('fileread', [function () {
     return {
         scope: { fileread: "=" },
@@ -29,8 +29,9 @@ app.directive('fileread', [function () {
     }
 }]);
 
-// --- 1. GLOBAL SESSION & HELPERS ---
+// --- 1. GLOBAL SESSION MANAGER & HELPERS ---
 app.run(function($window, $rootScope, API_CONFIG) {
+    // Session Check
     $rootScope.checkSession = function() {
         var user = $window.sessionStorage.getItem('currentUser');
         try {
@@ -103,6 +104,7 @@ app.controller('MarketplaceCtrl', function ($scope, $http, $window, $q, API_CONF
         ];
 
         products.forEach(function(p) {
+            // Search in both Master Name and User Defined Name
             var name = (p.productName || "").toLowerCase() + " " + (p.name || "").toLowerCase();
             for (var i = 0; i < sections.length; i++) {
                 if (sections[i].keywords.some(function(k) { return name.includes(k); })) {
@@ -117,6 +119,7 @@ app.controller('MarketplaceCtrl', function ($scope, $http, $window, $q, API_CONF
 
 // --- 3. MARKET CONTROLLER (SEARCH PAGE) ---
 app.controller('MarketCtrl', function ($scope, $http, $q, $window, API_CONFIG) {
+    // 1. Initial State: 'sell' is selected by default
     $scope.filters = { type: 'sell', search: '', location: '' };
     $scope.locations = []; 
     $scope.allItems = [];
@@ -142,28 +145,39 @@ app.controller('MarketCtrl', function ($scope, $http, $q, $window, API_CONFIG) {
         });
 
         $scope.allItems = sales.concat(buys);
-        $scope.filteredItems = $scope.allItems; 
-
+        
+        // Populate Location Filter
         var lSet = new Set();
         $scope.allItems.forEach(function(item) {
             if(item.location) lSet.add(item.location.trim());
         });
         $scope.locations = Array.from(lSet).sort();
 
-        if(searchQuery) $scope.applyFilters();
+        // FIX: Apply filters immediately so the list respects 'sell' selection on load
+        $scope.applyFilters();
     });
 
-    $scope.resetFilters = function() { $window.location.href = "market.html"; };
+    $scope.resetFilters = function() {
+        $window.location.href = "market.html";
+    };
 
     $scope.applyFilters = function() {
         var f = $scope.filters;
         var term = f.search.toLowerCase();
+
         $scope.filteredItems = $scope.allItems.filter(function(item) {
+            // Filter by Type
             if (f.type !== 'all' && f.type && item.type !== f.type) return false;
+            
+            // Filter by Search (Master Name, User Name, Location)
             var nameStr = (item.productName || "") + " " + (item.name || "");
+            
             var textMatch = (nameStr.toLowerCase().includes(term)) || 
                             (item.location && item.location.toLowerCase().includes(term));
+            
             if (!textMatch) return false;
+            
+            // Filter by Location
             if (f.location && item.location !== f.location) return false;
             return true;
         });
@@ -226,7 +240,7 @@ app.controller('ProductDetailCtrl', function ($scope, $http, $window, $rootScope
 
         $http.post(API_CONFIG.url + "product_bid/", bidData).then(function() {
             alert("Bid Placed Successfully!");
-            $scope.bid = { quantity: 1, amount: "", message: "" };
+            $scope.bid = { quantity: 1, amount: "", message: "" }; // Reset form
             loadBids();
         }, function() { alert("Error placing bid. Please try again."); });
     };
