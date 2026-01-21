@@ -26,7 +26,7 @@ SECRET_KEY = "django-insecure-u(w&g0_8^z-i&w6zc-&@a_7@@)e$kp_fi2r0=2wc#37+fq$1fx
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['agrivendia.loca.lt','fresh-clouds-call.loca.lt','127.0.0.1',]
+ALLOWED_HOSTS = ['agrivendia.loca.lt','fresh-clouds-call.loca.lt','127.0.0.1','localhost']
 
 
 # Application definition
