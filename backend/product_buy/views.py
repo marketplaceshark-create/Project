@@ -1,3 +1,4 @@
+# Path: backend/product_buy/views.py
 from django.shortcuts import render
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -8,7 +9,6 @@ from customer.models import Customer
 
 class ProductBuyAPI(APIView):
     
-    # --- OWNERSHIP HELPER ---
     def validate_ownership(self, product_buy, request_data):
         requester_id = request_data.get('customer') or self.request.query_params.get('customer')
         if not requester_id: return False
@@ -37,8 +37,10 @@ class ProductBuyAPI(APIView):
 
         productsBuy = ProductBuy.objects.all()
         
+        # FIXED: Filter by direct category_id, not product__category_id
+        # This ensures General Requests (where product is Null) are included
         category_id = request.query_params.get('category_id')
-        if category_id: productsBuy = productsBuy.filter(product__category_id=category_id)
+        if category_id: productsBuy = productsBuy.filter(category_id=category_id)
 
         customer_id = request.query_params.get('customer_id')
         if customer_id: productsBuy = productsBuy.filter(customer_id=customer_id)
@@ -67,7 +69,7 @@ class ProductBuyAPI(APIView):
         except ProductBuy.DoesNotExist:
             return Response({"error":"Not Found"}, status=status.HTTP_404_NOT_FOUND)
         
-        if not self.validate_ownership(productBuy, request.data):
+        if not self.validate_ownership(productBuy, request.query_params):
              return Response({"error": "Permission Denied"}, status=status.HTTP_403_FORBIDDEN)
 
         productBuy.delete()

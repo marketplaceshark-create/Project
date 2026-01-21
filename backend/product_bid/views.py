@@ -1,3 +1,4 @@
+# Path: backend/product_bid/views.py
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
@@ -7,7 +8,6 @@ from .serializer import ProductBidSerializer
 class ProductBidAPI(APIView):
     
     def get(self, request, id=None):
-        # Filter logic
         sell_id = request.query_params.get('sell_id')
         buy_id = request.query_params.get('buy_id')
 
@@ -29,15 +29,19 @@ class ProductBidAPI(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     def put(self, request, id):
-        # Used for Accepting/Rejecting Bids
         try:
             bid = ProductBid.objects.get(id=id)
         except ProductBid.DoesNotExist:
             return Response({"error": "Bid not found"}, status=status.HTTP_404_NOT_FOUND)
 
-        # Allow partial updates (e.g., just updating 'status')
-        serializer = ProductBidSerializer(bid, data=request.data, partial=True)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        # FIXED: SECURITY - Only allow updating the 'status' field via PUT
+        # This prevents users/frontend from accidentally modifying price/qty during acceptance
+        status_update = request.data.get('status')
+        if not status_update:
+            return Response({"error": "Only status updates allowed"}, status=status.HTTP_400_BAD_REQUEST)
+
+        bid.status = status_update
+        bid.save()
+        
+        serializer = ProductBidSerializer(bid)
+        return Response(serializer.data)
