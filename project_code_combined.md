@@ -84,87 +84,98 @@
     <title>Admin Dashboard</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
     <link href="css/styles.css" rel="stylesheet">
     <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.8.2/angular.min.js"></script>
     <script src="app.js"></script>
+    <style>
+        .admin-layout { display: flex; height: 100vh; overflow: hidden; }
+        .sidebar { width: 260px; background: #1e293b; color: #94a3b8; flex-shrink: 0; display: flex; flex-direction: column; }
+        .sidebar-brand { padding: 25px; color: white; font-weight: 700; font-size: 1.2rem; border-bottom: 1px solid #334155; }
+        .nav-item-admin { padding: 12px 25px; cursor: pointer; transition: 0.2s; display: flex; align-items: center; border-left: 4px solid transparent; }
+        .nav-item-admin:hover { color: white; background: #334155; }
+        .nav-item-admin.active { background: #0f172a; color: #4ade80; border-left-color: #4ade80; }
+        .main-content { flex-grow: 1; background: #f1f5f9; overflow-y: auto; padding: 30px; }
+        .table-card { background: white; border-radius: 16px; box-shadow: var(--shadow-sm); overflow: hidden; }
+        .table thead th { background: #f8fafc; color: #64748b; font-weight: 600; text-transform: uppercase; font-size: 0.8rem; border-bottom: 2px solid #e2e8f0; }
+    </style>
 </head>
-<!-- FIXED: Added height: 100vh to ensure internal scrolling works -->
-<body ng-controller="AdminDashCtrl" style="display: flex; overflow: hidden; background: #f4f6f8; height: 100vh;">
+<body ng-controller="AdminDashCtrl">
 
-    <!-- SIDEBAR -->
-    <div class="sidebar">
-        <div class="sidebar-header"><i class="bi bi-shield-lock-fill me-2"></i> Admin Portal</div>
-        <nav class="mt-3">
-            <div class="nav-link" ng-class="{'active': activeTab=='categories'}" ng-click="switchTab('categories')"><i class="bi bi-tags me-2"></i> Categories</div>
-            <div class="nav-link" ng-class="{'active': activeTab=='products'}" ng-click="switchTab('products')"><i class="bi bi-box me-2"></i> Products</div>
-            <div class="nav-link" ng-class="{'active': activeTab=='plans'}" ng-click="switchTab('plans')"><i class="bi bi-card-checklist me-2"></i> Plans</div>
-            <div class="nav-link" ng-class="{'active': activeTab=='customers'}" ng-click="switchTab('customers')"><i class="bi bi-people me-2"></i> Customers</div>
-        </nav>
-        <div class="mt-auto p-3"><a href="index.html" class="btn btn-outline-secondary w-100 text-light border-secondary">Back to Site</a></div>
-    </div>
-
-    <!-- MAIN CONTENT -->
-    <div style="flex: 1; padding: 30px; overflow-y: auto;">
-        <div class="d-flex justify-content-between align-items-center mb-4">
-            <h3 class="fw-bold text-dark text-capitalize">{{activeTab.replace('_', ' ')}}</h3>
-            <div class="d-flex gap-2">
-                <form class="d-flex bg-white p-1 rounded border shadow-sm">
-                    <input type="file" id="csvFile" class="form-control form-control-sm border-0" accept=".csv">
-                    <button type="button" class="btn btn-dark btn-sm rounded" ng-click="uploadCSV()"><i class="bi bi-upload"></i></button>
-                </form>
-                <button class="btn btn-success btn-sm px-3 fw-bold" data-bs-toggle="modal" data-bs-target="#editModal" ng-click="openAdd()"><i class="bi bi-plus-lg"></i> Add</button>
+    <div class="admin-layout">
+        <!-- SIDEBAR -->
+        <div class="sidebar">
+            <div class="sidebar-brand"><i class="bi bi-shield-check me-2 text-success"></i> Admin Panel</div>
+            <div class="mt-4">
+                <div class="nav-item-admin" ng-class="{'active': activeTab=='categories'}" ng-click="switchTab('categories')"><i class="bi bi-tags me-3"></i> Categories</div>
+                <div class="nav-item-admin" ng-class="{'active': activeTab=='products'}" ng-click="switchTab('products')"><i class="bi bi-box-seam me-3"></i> Products</div>
+                <div class="nav-item-admin" ng-class="{'active': activeTab=='plans'}" ng-click="switchTab('plans')"><i class="bi bi-credit-card me-3"></i> Plans</div>
+                <div class="nav-item-admin" ng-class="{'active': activeTab=='customers'}" ng-click="switchTab('customers')"><i class="bi bi-people me-3"></i> Customers</div>
+            </div>
+            <div class="mt-auto p-4 border-top border-secondary">
+                <a href="index.html" class="btn btn-outline-secondary w-100 text-light border-secondary btn-sm">Exit to Site</a>
             </div>
         </div>
 
-        <div class="admin-card">
-            <table class="table table-hover mb-0 custom-table">
-                <thead><tr><th ng-repeat="field in currentSchema">{{field.label}}</th><th class="text-end">Actions</th></tr></thead>
-                <tbody>
-                    <tr ng-repeat="row in tableData">
-                        <td ng-repeat="field in currentSchema">
-                            <span ng-if="!field.key.includes('Image')">{{row[field.key]}}</span>
-                            <img ng-if="field.key.includes('Image')" ng-src="{{row[field.key]}}" style="height:30px;">
-                        </td>
-                        <td class="text-end">
-                             <button class="action-btn btn-edit" ng-click="editRow(row)" data-bs-toggle="modal" data-bs-target="#editModal"><i class="bi bi-pencil-fill"></i></button>
-                             <button class="action-btn btn-delete" ng-click="deleteRow(row.id)"><i class="bi bi-trash-fill"></i></button>
-                        </td>
-                    </tr>
-                </tbody>
-            </table>
+        <!-- MAIN -->
+        <div class="main-content">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h3 class="fw-bold text-dark text-capitalize m-0">{{activeTab.replace('_', ' ')}} Management</h3>
+                <div class="d-flex gap-2">
+                    <form class="d-flex bg-white p-1 rounded shadow-sm border">
+                        <input type="file" id="csvFile" class="form-control form-control-sm border-0 shadow-none" accept=".csv">
+                        <button type="button" class="btn btn-dark btn-sm rounded" ng-click="uploadCSV()"><i class="bi bi-upload"></i></button>
+                    </form>
+                    <button class="btn btn-success btn-sm px-3 fw-bold rounded-pill shadow-sm" data-bs-toggle="modal" data-bs-target="#editModal" ng-click="openAdd()"><i class="bi bi-plus-lg me-1"></i> Add New</button>
+                </div>
+            </div>
+
+            <div class="table-card">
+                <table class="table table-hover mb-0 align-middle">
+                    <thead><tr><th ng-repeat="field in currentSchema">{{field.label}}</th><th class="text-end">Actions</th></tr></thead>
+                    <tbody>
+                        <tr ng-repeat="row in tableData">
+                            <td ng-repeat="field in currentSchema">
+                                <span ng-if="!field.key.includes('Image')">{{row[field.key]}}</span>
+                                <img ng-if="field.key.includes('Image')" ng-src="{{row[field.key]}}" style="height:35px; border-radius: 6px;">
+                            </td>
+                            <td class="text-end">
+                                 <button class="btn btn-light btn-sm text-primary" ng-click="editRow(row)" data-bs-toggle="modal" data-bs-target="#editModal"><i class="bi bi-pencil-fill"></i></button>
+                                 <button class="btn btn-light btn-sm text-danger" ng-click="deleteRow(row.id)"><i class="bi bi-trash-fill"></i></button>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+                <div ng-if="tableData.length === 0" class="p-5 text-center text-muted">No records found.</div>
+            </div>
         </div>
     </div>
 
     <!-- MODAL -->
-    <div class="modal fade" id="editModal">
+    <div class="modal fade" id="editModal" tabindex="-1">
         <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content border-0 shadow">
-                <div class="modal-header bg-success text-white">
-                    <h5 class="modal-title">{{ editMode ? 'Edit' : 'Add' }} Record</h5>
+            <div class="modal-content border-0 shadow-lg rounded-4">
+                <div class="modal-header bg-success text-white rounded-top-4">
+                    <h5 class="modal-title fw-bold">{{ editMode ? 'Edit' : 'Add' }} Record</h5>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                 </div>
-                <div class="modal-body">
+                <div class="modal-body p-4">
                     <form id="adminForm">
                         <div class="mb-3" ng-repeat="field in currentSchema">
-                            <label class="form-label small fw-bold text-muted">{{field.label}}</label>
+                            <label class="form-label small fw-bold text-muted text-uppercase">{{field.label}}</label>
                             
-                            <!-- Standard Inputs -->
                             <input ng-if="field.type != 'textarea' && field.type != 'select'" type="{{field.type}}" class="form-control" ng-model="currentItem[field.key]">
                             
-                            <!-- Textarea -->
                             <textarea ng-if="field.type == 'textarea'" class="form-control" rows="3" ng-model="currentItem[field.key]"></textarea>
                             
-                            <!-- Dropdown (Specific logic for categories) -->
                             <select ng-if="field.type == 'select'" class="form-select" ng-model="currentItem[field.key]" ng-options="opt.id as opt.name for opt in getOptions(field.options)">
                                 <option value="">Select {{field.label}}</option>
                             </select>
                         </div>
                     </form>
                 </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary rounded-pill" data-bs-dismiss="modal">Cancel</button>
-                    <button type="button" class="btn btn-success rounded-pill" ng-click="saveRow()">Save</button>
+                <div class="modal-footer border-0 pt-0">
+                    <button type="button" class="btn btn-light rounded-pill px-4" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-success rounded-pill px-4" ng-click="saveRow()">Save Changes</button>
                 </div>
             </div>
         </div>
@@ -336,162 +347,195 @@
 <html lang="en" ng-app="userApp">
 <head>
     <meta charset="UTF-8">
-    <title>My Dashboard - Agrivendia</title>
+    <title>Dashboard - Agrivendia</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
     <link href="css/styles.css" rel="stylesheet">
     <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.8.2/angular.min.js"></script>
     <script src="app.js"></script>
-    <style>
-        .nav-pills .nav-link.active { background-color: #2E7D32; }
-        .nav-pills .nav-link { color: #555; font-weight: 600; border-radius: 50px; padding: 10px 25px; margin: 0 5px; }
-        .listing-card { border-left: 5px solid transparent; margin-bottom: 20px; }
-        .listing-card.sell { border-color: #2E7D32; }
-        .listing-card.buy { border-color: #0d6efd; }
-        .bid-item { background: #f8f9fa; border-radius: 8px; padding: 15px; margin-top: 10px; }
-        .hover-link:hover { text-decoration: underline !important; color: #2E7D32 !important; }
-    </style>
 </head>
-<body ng-controller="CustomerDashCtrl">
+<body ng-controller="CustomerDashCtrl" style="background: #f8f9fa;">
 
-    <!-- HEADER -->
-    <div class="dash-header">
-        <div class="container d-flex justify-content-between align-items-center">
+    <div ng-include="'components/navbar.html'" ng-init="activePage='dashboard'"></div>
+
+    <div class="container py-5">
+        <!-- HEADER -->
+        <div class="d-flex justify-content-between align-items-center mb-5">
             <div>
-                <h2 class="fw-bold m-0"><i class="bi bi-grid-fill me-2"></i> Dashboard</h2>
-                <p class="mb-0 opacity-75">Welcome back, {{currentUser.name}}</p>
+                <h2 class="fw-bold m-0 text-dark">My Dashboard</h2>
+                <p class="text-muted">Manage your listings and bids</p>
             </div>
-            <div class="d-flex gap-2">
-                <a href="index.html" class="btn btn-outline-light rounded-pill btn-sm px-3">Home</a>
-                <button ng-click="logout()" class="btn btn-warning rounded-pill btn-sm px-3 fw-bold">Logout</button>
-            </div>
+            <button ng-click="logout()" class="btn btn-outline-danger rounded-pill px-4 btn-sm">Logout</button>
         </div>
-    </div>
 
-    <div class="container pb-5">
         <!-- STATS -->
-        <div class="row mb-5">
-            <div class="col-md-4"><div class="stats-box"><h2 class="fw-bold text-success">{{myListings.length}}</h2><small class="fw-bold text-muted">ACTIVE SALES</small></div></div>
-            <div class="col-md-4"><div class="stats-box"><h2 class="fw-bold text-primary">{{myBuyRequests.length}}</h2><small class="fw-bold text-muted">BUY REQUESTS</small></div></div>
-            <div class="col-md-4"><div class="stats-box"><h2 class="fw-bold text-warning">{{incomingBidsCount}}</h2><small class="fw-bold text-muted">PENDING BIDS</small></div></div>
+        <div class="row g-4 mb-5">
+            <div class="col-md-4">
+                <div class="stat-card">
+                    <div>
+                        <div class="text-muted small fw-bold text-uppercase">Active Sales</div>
+                        <h2 class="fw-bold text-dark m-0">{{myListings.length}}</h2>
+                    </div>
+                    <div class="stat-icon bg-success-subtle text-success"><i class="bi bi-shop"></i></div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="stat-card">
+                    <div>
+                        <div class="text-muted small fw-bold text-uppercase">Buy Requests</div>
+                        <h2 class="fw-bold text-dark m-0">{{myBuyRequests.length}}</h2>
+                    </div>
+                    <div class="stat-icon bg-primary-subtle text-primary"><i class="bi bi-cart"></i></div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="stat-card">
+                    <div>
+                        <div class="text-muted small fw-bold text-uppercase">Pending Bids</div>
+                        <h2 class="fw-bold text-dark m-0">{{incomingBidsCount}}</h2>
+                    </div>
+                    <div class="stat-icon bg-warning-subtle text-warning"><i class="bi bi-bell"></i></div>
+                </div>
+            </div>
         </div>
 
         <!-- TABS -->
-        <ul class="nav nav-pills justify-content-center mb-4">
-            <li class="nav-item"><a class="nav-link" ng-class="{'active': activeTab == 'sell'}" ng-click="activeTab = 'sell'">My Sales</a></li>
-            <li class="nav-item"><a class="nav-link" ng-class="{'active': activeTab == 'requests'}" ng-click="activeTab = 'requests'">My Requests</a></li>
-            <li class="nav-item"><a class="nav-link" ng-class="{'active': activeTab == 'bids'}" ng-click="activeTab = 'bids'">My Offers</a></li>
-        </ul>
+        <div class="bg-white p-4 rounded-4 shadow-sm border">
+            <ul class="nav nav-pills nav-fill mb-4 p-1 bg-light rounded-pill" style="max-width: 600px; margin: 0 auto;">
+                <li class="nav-item">
+                    <a class="nav-link rounded-pill" ng-class="{'active bg-white shadow-sm text-success': activeTab == 'sell'}" ng-click="activeTab = 'sell'" href="#">My Sales</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link rounded-pill" ng-class="{'active bg-white shadow-sm text-primary': activeTab == 'requests'}" ng-click="activeTab = 'requests'" href="#">My Requests</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link rounded-pill" ng-class="{'active bg-white shadow-sm text-dark': activeTab == 'bids'}" ng-click="activeTab = 'bids'" href="#">My Offers</a>
+                </li>
+            </ul>
 
-        <!-- TAB CONTENT: SALES -->
-        <div ng-show="activeTab == 'sell'">
-            <div class="d-flex justify-content-between mb-3">
-                <h5 class="fw-bold text-success">Selling</h5>
-                <a href="product_sell.html" class="btn btn-success rounded-pill btn-sm fw-bold"><i class="bi bi-plus-lg"></i> Post Sale</a>
-            </div>
-            <div class="listing-card feature-box p-4 sell" ng-repeat="item in myListings">
-                <div class="d-flex justify-content-between">
-                    <div>
-                        <h5 class="fw-bold">
-                            <a href="product_detail.html?id={{item.id}}&type=sell" class="text-dark text-decoration-none hover-link">{{item.productName}} <small class="text-muted">({{item.name}})</small></a>
-                        </h5>
-                        <div class="small text-muted">{{item.quantity}} Units | ₹{{item.price}} | {{item.location}}</div>
-                    </div>
-                    <div>
-                        <!-- NEW: DELETE BUTTON -->
-                        <button class="btn btn-sm btn-outline-danger rounded-pill me-2" ng-click="deletePost(item.id, 'sell')"><i class="bi bi-trash"></i></button>
-                        <button class="btn btn-sm btn-outline-secondary rounded-pill" ng-click="item.showBids = !item.showBids">
-                            {{item.showBids ? 'Hide Offers' : 'View Offers'}}
-                            <span class="badge bg-danger rounded-pill ms-1" ng-if="getPendingBidCount(item.id, 'sell') > 0">{{getPendingBidCount(item.id, 'sell')}}</span>
-                        </button>
-                    </div>
+            <!-- CONTENT: SALES -->
+            <div ng-show="activeTab == 'sell'">
+                <div class="text-end mb-3">
+                    <a href="product_sell.html" class="btn btn-primary-custom rounded-pill btn-sm"><i class="bi bi-plus-lg"></i> Sell Produce</a>
                 </div>
-                <div ng-if="item.showBids" class="mt-3 border-top pt-3">
-                    <div ng-repeat="bid in getBidsForProduct(item.id, 'sell')" class="bid-item d-flex justify-content-between align-items-center">
-                        <div>
-                            <strong>{{bid.bidder_details.name}}</strong> wants {{bid.quantity}} units at <strong class="text-success">₹{{bid.amount}}</strong>
-                            <div ng-if="bid.status == 'ACCEPTED'" class="mt-1 small bg-success-subtle p-2 rounded text-success border border-success">
-                                <i class="bi bi-telephone-fill"></i> Contact: {{bid.bidder_details.phone}} | {{bid.bidder_details.email}}
+                <div class="card mb-3 border-0 shadow-sm" ng-repeat="item in myListings">
+                    <div class="card-body p-4">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div class="d-flex align-items-center">
+                                <div class="bg-success-subtle p-3 rounded-circle me-3 text-success"><i class="bi bi-box-seam fs-4"></i></div>
+                                <div>
+                                    <h5 class="fw-bold mb-1"><a href="product_detail.html?id={{item.id}}&type=sell" class="text-dark text-decoration-none">{{item.productName}}</a></h5>
+                                    <div class="text-muted small">₹{{item.price}} • {{item.quantity}} Units • {{item.location}}</div>
+                                </div>
+                            </div>
+                            <div>
+                                <button class="btn btn-light btn-sm rounded-pill text-danger me-2" ng-click="deletePost(item.id, 'sell')"><i class="bi bi-trash"></i></button>
+                                <button class="btn btn-outline-custom btn-sm rounded-pill" ng-click="item.showBids = !item.showBids">
+                                    {{item.showBids ? 'Close' : 'Offers'}}
+                                    <span class="badge bg-danger ms-1" ng-if="getPendingBidCount(item.id, 'sell') > 0">{{getPendingBidCount(item.id, 'sell')}}</span>
+                                </button>
                             </div>
                         </div>
-                        <div ng-if="bid.status == 'PENDING'">
-                            <button class="btn btn-sm btn-success rounded-pill" ng-click="updateBid(bid, 'ACCEPTED')">Accept</button>
-                            <button class="btn btn-sm btn-outline-danger rounded-pill" ng-click="updateBid(bid, 'REJECTED')">Reject</button>
-                        </div>
-                        <div ng-if="bid.status != 'PENDING'" class="badge" ng-class="{'bg-success': bid.status=='ACCEPTED', 'bg-danger': bid.status=='REJECTED'}">{{bid.status}}</div>
-                    </div>
-                    <div ng-if="getBidsForProduct(item.id, 'sell').length == 0" class="text-muted small">No offers yet.</div>
-                </div>
-            </div>
-        </div>
-
-        <!-- TAB CONTENT: BUY REQUESTS -->
-        <div ng-show="activeTab == 'requests'">
-            <div class="d-flex justify-content-between mb-3">
-                <h5 class="fw-bold text-primary">Buying</h5>
-                <a href="product_buy.html" class="btn btn-primary rounded-pill btn-sm fw-bold"><i class="bi bi-plus-lg"></i> Post Request</a>
-            </div>
-            <div class="listing-card feature-box p-4 buy" ng-repeat="item in myBuyRequests">
-                <div class="d-flex justify-content-between">
-                    <div>
-                        <h5 class="fw-bold">
-                             <a href="product_detail.html?id={{item.id}}&type=buy" class="text-dark text-decoration-none hover-link">{{item.productName || item.name || 'General Request'}}</a>
-                        </h5>
-                        <div class="small text-muted">Need {{item.quantity}} Units | Target: ₹{{item.price}} | {{item.location}}</div>
-                    </div>
-                    <div>
-                        <!-- NEW: DELETE BUTTON -->
-                        <button class="btn btn-sm btn-outline-danger rounded-pill me-2" ng-click="deletePost(item.id, 'buy')"><i class="bi bi-trash"></i></button>
-                        <button class="btn btn-sm btn-outline-secondary rounded-pill" ng-click="item.showBids = !item.showBids">View Sellers</button>
-                    </div>
-                </div>
-                <div ng-if="item.showBids" class="mt-3 border-top pt-3">
-                    <div ng-repeat="bid in getBidsForProduct(item.id, 'buy')" class="bid-item d-flex justify-content-between align-items-center">
-                        <div>
-                            <strong>{{bid.bidder_details.name}}</strong> offers {{bid.quantity}} units at <strong class="text-success">₹{{bid.amount}}</strong>
-                            <div ng-if="bid.status == 'ACCEPTED'" class="mt-1 small bg-primary-subtle p-2 rounded text-primary border border-primary">
-                                <i class="bi bi-telephone-fill"></i> Contact: {{bid.bidder_details.phone}}
-                            </div>
-                        </div>
-                        <div ng-if="bid.status == 'PENDING'">
-                            <button class="btn btn-sm btn-success rounded-pill" ng-click="updateBid(bid, 'ACCEPTED')">Accept</button>
-                            <button class="btn btn-sm btn-outline-danger rounded-pill" ng-click="updateBid(bid, 'REJECTED')">Reject</button>
-                        </div>
-                        <div ng-if="bid.status != 'PENDING'" class="badge" ng-class="{'bg-success': bid.status=='ACCEPTED', 'bg-danger': bid.status=='REJECTED'}">{{bid.status}}</div>
-                    </div>
-                    <div ng-if="getBidsForProduct(item.id, 'buy').length == 0" class="text-muted small">No sellers yet.</div>
-                </div>
-            </div>
-        </div>
-
-        <!-- TAB CONTENT: MY BIDS -->
-        <div ng-show="activeTab == 'bids'">
-            <h5 class="fw-bold mb-3">My Offers</h5>
-            <div class="row">
-                <div class="col-md-6" ng-repeat="bid in myBids">
-                    <div class="feature-box p-3 mb-3 h-100 position-relative">
-                        <div class="d-flex justify-content-between">
-                            <span class="fw-bold small text-muted">BID #{{bid.id}}</span>
-                            <span class="badge" ng-class="{'bg-warning text-dark': bid.status=='PENDING', 'bg-success': bid.status=='ACCEPTED', 'bg-danger': bid.status=='REJECTED'}">{{bid.status}}</span>
-                        </div>
-                        <h5 class="mt-2">
-                             <a ng-if="bid.sell_post" href="product_detail.html?id={{bid.sell_post}}&type=sell" class="text-dark text-decoration-none hover-link">View Post <i class="bi bi-box-arrow-up-right small"></i></a>
-                             <a ng-if="bid.buy_post" href="product_detail.html?id={{bid.buy_post}}&type=buy" class="text-dark text-decoration-none hover-link">View Post <i class="bi bi-box-arrow-up-right small"></i></a>
-                        </h5>
-                        <div class="mt-2">Offered: <span class="text-success fw-bold">₹{{bid.amount}}</span></div>
-                        <p class="small text-muted">For {{bid.quantity}} units</p>
                         
-                        <div ng-if="bid.status == 'ACCEPTED'" class="alert alert-success py-2 small fw-bold">
-                            <i class="bi bi-check-circle-fill"></i> Bid Accepted!<br>
-                            <div class="mt-1 text-dark fw-normal">
-                                Call Owner: <strong>{{bid.post_owner_details.phone}}</strong><br>
-                                Name: {{bid.post_owner_details.name}}
+                        <!-- Bids Section -->
+                        <div ng-if="item.showBids" class="mt-4 bg-light p-3 rounded-3">
+                            <h6 class="fw-bold text-muted mb-3">Offers received</h6>
+                            <div ng-if="getBidsForProduct(item.id, 'sell').length == 0" class="text-center text-muted small py-2">No offers yet.</div>
+                            <div ng-repeat="bid in getBidsForProduct(item.id, 'sell')" class="d-flex justify-content-between align-items-center bg-white p-3 rounded mb-2 border">
+                                <div>
+                                    <span class="fw-bold">{{bid.bidder_details.name}}</span> offers <span class="text-success fw-bold">₹{{bid.amount}}</span> for {{bid.quantity}} units.
+                                    <div ng-if="bid.status == 'ACCEPTED'" class="text-success small mt-1"><i class="bi bi-telephone"></i> {{bid.bidder_details.phone}} | {{bid.bidder_details.email}}</div>
+                                </div>
+                                <div>
+                                    <div ng-if="bid.status == 'PENDING'">
+                                        <button class="btn btn-success btn-sm rounded-pill px-3" ng-click="updateBid(bid, 'ACCEPTED')">Accept</button>
+                                        <button class="btn btn-outline-danger btn-sm rounded-pill px-3" ng-click="updateBid(bid, 'REJECTED')">Decline</button>
+                                    </div>
+                                    <span ng-if="bid.status != 'PENDING'" class="badge" ng-class="{'bg-success': bid.status=='ACCEPTED', 'bg-danger': bid.status=='REJECTED'}">{{bid.status}}</span>
+                                </div>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
+
+            <!-- CONTENT: REQUESTS -->
+            <div ng-show="activeTab == 'requests'">
+                <div class="text-end mb-3">
+                    <a href="product_buy.html" class="btn btn-primary-custom rounded-pill btn-sm"><i class="bi bi-plus-lg"></i> Post Request</a>
+                </div>
+                <div class="card mb-3 border-0 shadow-sm" ng-repeat="item in myBuyRequests">
+                    <div class="card-body p-4">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div class="d-flex align-items-center">
+                                <div class="bg-primary-subtle p-3 rounded-circle me-3 text-primary"><i class="bi bi-basket fs-4"></i></div>
+                                <div>
+                                    <h5 class="fw-bold mb-1"><a href="product_detail.html?id={{item.id}}&type=buy" class="text-dark text-decoration-none">{{item.productName || item.name || 'Request'}}</a></h5>
+                                    <div class="text-muted small">Target: ₹{{item.price}} • Need {{item.quantity}} Units</div>
+                                </div>
+                            </div>
+                            <div>
+                                <button class="btn btn-light btn-sm rounded-pill text-danger me-2" ng-click="deletePost(item.id, 'buy')"><i class="bi bi-trash"></i></button>
+                                <button class="btn btn-outline-custom btn-sm rounded-pill" ng-click="item.showBids = !item.showBids">View Sellers</button>
+                            </div>
+                        </div>
+                        
+                        <!-- Bids Section -->
+                        <div ng-if="item.showBids" class="mt-4 bg-light p-3 rounded-3">
+                            <div ng-if="getBidsForProduct(item.id, 'buy').length == 0" class="text-center text-muted small">No sellers yet.</div>
+                            <div ng-repeat="bid in getBidsForProduct(item.id, 'buy')" class="d-flex justify-content-between align-items-center bg-white p-3 rounded mb-2 border">
+                                <div>
+                                    <span class="fw-bold">{{bid.bidder_details.name}}</span> offers stock at <span class="text-success fw-bold">₹{{bid.amount}}</span>
+                                    <div ng-if="bid.status == 'ACCEPTED'" class="text-primary small mt-1"><i class="bi bi-telephone"></i> Contact: {{bid.bidder_details.phone}}</div>
+                                </div>
+                                <div>
+                                    <div ng-if="bid.status == 'PENDING'">
+                                        <button class="btn btn-success btn-sm rounded-pill px-3" ng-click="updateBid(bid, 'ACCEPTED')">Accept</button>
+                                        <button class="btn btn-outline-danger btn-sm rounded-pill px-3" ng-click="updateBid(bid, 'REJECTED')">Reject</button>
+                                    </div>
+                                    <span ng-if="bid.status != 'PENDING'" class="badge" ng-class="{'bg-success': bid.status=='ACCEPTED', 'bg-danger': bid.status=='REJECTED'}">{{bid.status}}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- CONTENT: MY BIDS -->
+            <div ng-show="activeTab == 'bids'">
+                <div class="row g-4">
+                    <div class="col-md-6" ng-repeat="bid in myBids">
+                        <div class="card h-100 border-0 shadow-sm">
+                            <div class="card-body p-4">
+                                <div class="d-flex justify-content-between mb-3">
+                                    <span class="badge rounded-pill bg-light text-dark border">ID #{{bid.id}}</span>
+                                    <span class="badge rounded-pill" ng-class="{'bg-warning text-dark': bid.status=='PENDING', 'bg-success': bid.status=='ACCEPTED', 'bg-danger': bid.status=='REJECTED'}">{{bid.status}}</span>
+                                </div>
+                                <h5 class="fw-bold mb-3">
+                                     <a ng-if="bid.sell_post" href="product_detail.html?id={{bid.sell_post}}&type=sell" class="text-dark">View Listing <i class="bi bi-box-arrow-up-right"></i></a>
+                                     <a ng-if="bid.buy_post" href="product_detail.html?id={{bid.buy_post}}&type=buy" class="text-dark">View Listing <i class="bi bi-box-arrow-up-right"></i></a>
+                                </h5>
+                                <div class="p-3 bg-light rounded">
+                                    <div class="d-flex justify-content-between">
+                                        <span class="text-muted">Your Offer:</span>
+                                        <span class="fw-bold text-success">₹{{bid.amount}}</span>
+                                    </div>
+                                    <div class="d-flex justify-content-between">
+                                        <span class="text-muted">Quantity:</span>
+                                        <span class="fw-bold">{{bid.quantity}}</span>
+                                    </div>
+                                </div>
+                                <div ng-if="bid.status == 'ACCEPTED'" class="mt-3 alert alert-success mb-0 p-2 text-center small">
+                                    <div class="fw-bold">Bid Accepted!</div>
+                                    Call Owner: {{bid.post_owner_details.phone}}<br>
+                                    {{bid.post_owner_details.name}}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
         </div>
     </div>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
@@ -612,13 +656,12 @@
     <title>Marketplace - Agrivendia</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link href="css/styles.css" rel="stylesheet">
     <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.8.2/angular.min.js"></script>
     <script src="app.js"></script>
     <style>
-        .filter-sidebar { background: white; border-radius: 12px; border: 1px solid #eee; position: sticky; top: 90px; }
-        .filter-section { padding: 20px; border-bottom: 1px solid #f0f0f0; }
+        .sidebar-sticky { position: sticky; top: 100px; z-index: 5; }
+        .filter-group { background: white; padding: 20px; border-radius: 16px; margin-bottom: 20px; box-shadow: var(--shadow-sm); }
     </style>
 </head>
 <body ng-controller="MarketCtrl">
@@ -627,16 +670,18 @@
 
     <div class="container py-5">
         <div class="row g-4">
-            <!-- SIDEBAR -->
+            <!-- FILTER SIDEBAR -->
             <div class="col-lg-3">
-                <div class="filter-sidebar">
-                    <div class="p-3 bg-light border-bottom d-flex justify-content-between align-items-center">
-                        <h6 class="m-0 fw-bold"><i class="bi bi-sliders"></i> Filters</h6>
-                        <a href="#" class="small text-danger fw-bold" ng-click="resetFilters()">Reset</a>
-                    </div>
-                    <div class="filter-section">
-                        <div class="small fw-bold text-uppercase text-muted mb-3">Type</div>
-                        <div class="form-check">
+                <div class="sidebar-sticky">
+                    <div class="filter-group">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h6 class="fw-bold m-0"><i class="bi bi-sliders"></i> Filters</h6>
+                            <a href="#" ng-click="resetFilters()" class="small text-danger fw-bold text-decoration-none">Clear</a>
+                        </div>
+                        <hr class="text-muted opacity-25">
+                        
+                        <label class="small fw-bold text-muted text-uppercase mb-2">Listing Type</label>
+                        <div class="form-check mb-2">
                             <input class="form-check-input" type="radio" name="type" ng-model="filters.type" value="sell" ng-change="applyFilters()">
                             <label class="form-check-label">For Sale</label>
                         </div>
@@ -645,50 +690,62 @@
                             <label class="form-check-label">Buy Requests</label>
                         </div>
                     </div>
-                    <div class="filter-section">
-                        <div class="small fw-bold text-uppercase text-muted mb-3">Location</div>
-                        <select class="form-select form-select-sm" ng-model="filters.location" ng-change="applyFilters()">
-                            <option value="">All Locations</option>
+
+                    <div class="filter-group">
+                         <label class="small fw-bold text-muted text-uppercase mb-2">Location</label>
+                         <select class="form-select form-select-sm bg-light border-0" ng-model="filters.location" ng-change="applyFilters()">
+                            <option value="">Anywhere</option>
                             <option ng-repeat="loc in locations" value="{{loc}}">{{loc}}</option>
                         </select>
                     </div>
                 </div>
             </div>
 
-            <!-- CONTENT -->
+            <!-- PRODUCT GRID -->
             <div class="col-lg-9">
+                <!-- Search -->
                 <div class="position-relative mb-4">
-                    <input type="text" class="form-control rounded-pill py-3 px-4" placeholder="Search crops..." ng-model="filters.search" ng-change="applyFilters()">
-                    <button class="position-absolute top-50 end-0 translate-middle-y btn btn-success rounded-circle m-1" style="width:40px; height:40px;"><i class="bi bi-search"></i></button>
+                    <i class="bi bi-search position-absolute top-50 start-0 translate-middle-y ms-3 text-muted"></i>
+                    <input type="text" class="form-control rounded-pill py-3 ps-5 shadow-sm border-0" placeholder="Search crops, fruits, grains..." ng-model="filters.search" ng-change="applyFilters()">
                 </div>
 
                 <div class="row g-4">
                     <div class="col-md-4 col-sm-6" ng-repeat="item in filteredItems">
-                        <div class="ecom-card" ng-click="openItem(item)">
-                            <div class="card-img-wrap">
-                                <img ng-src="{{ getImageUrl(item) }}" class="img-fluid" ng-if="getImageUrl(item)">
+                        <div class="card-hover" ng-click="openItem(item)" style="cursor: pointer;">
+                            <div class="prod-img-wrap">
+                                <div class="badge-float" ng-if="item.type==='sell'"><i class="bi bi-tag-fill"></i> Sale</div>
+                                <div class="badge-float bg-primary text-white" ng-if="item.type==='buy'"><i class="bi bi-basket-fill"></i> Wanted</div>
                                 
+                                <img ng-src="{{ getImageUrl(item) }}" ng-if="getImageUrl(item)">
                                 <div ng-if="!getImageUrl(item)" class="d-flex align-items-center justify-content-center h-100 bg-light text-muted">
-                                    <i class="bi bi-image display-4"></i>
+                                    <i class="bi bi-image fs-1 opacity-25"></i>
                                 </div>
-                                <div class="badge-custom" ng-if="item.trusted"><i class="bi bi-patch-check-fill"></i> Verified</div>
-                                <div class="badge-custom badge-buy" ng-if="item.type === 'buy'">WANTED</div>
                             </div>
 
-                            <div class="p-3 d-flex flex-column flex-grow-1">
+                            <div class="prod-body d-flex flex-column" style="min-height: 180px;">
                                 <div class="prod-title">{{item.name || item.productName}}</div>
-                                <span class="d-block text-muted small mb-2"><i class="bi bi-geo-alt-fill text-danger"></i> {{item.location}}</span>
-                                <div class="bg-light rounded p-2 mb-3 mt-auto">
-                                    <div class="small fw-bold text-uppercase text-muted" style="font-size:0.65rem">Stock</div>
-                                    <div class="fw-bold">{{item.quantity}} Units</div>
-                                </div>
-                                <div class="d-flex justify-content-between align-items-center">
-                                    <div class="price-tag" ng-class="{'text-price-sell': item.type==='sell', 'text-price-buy': item.type==='buy'}">₹{{item.price}}</div>
-                                    <button class="btn btn-sm btn-light text-success"><i class="bi" ng-class="{'bi-plus-lg': item.type==='sell', 'bi-telephone-fill': item.type==='buy'}"></i></button>
+                                <div class="prod-loc"><i class="bi bi-geo-alt-fill text-danger small"></i> {{item.location}}</div>
+                                
+                                <div class="mt-auto pt-3 border-top">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <div>
+                                            <div class="small text-muted text-uppercase fw-bold" style="font-size: 0.7rem;">Price</div>
+                                            <div class="prod-price">₹{{item.price}}</div>
+                                        </div>
+                                        <div class="text-end">
+                                            <div class="small text-muted text-uppercase fw-bold" style="font-size: 0.7rem;">Qty</div>
+                                            <div class="fw-bold">{{item.quantity}}</div>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
                     </div>
+                </div>
+                
+                <div ng-if="filteredItems.length === 0" class="text-center py-5">
+                    <div class="text-muted display-1"><i class="bi bi-inbox"></i></div>
+                    <p class="h5 mt-3 text-muted">No items found matching your filters.</p>
                 </div>
             </div>
         </div>
@@ -796,38 +853,42 @@
     <meta charset="UTF-8">
     <title>Login - Agrivendia</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link href="css/styles.css" rel="stylesheet">
     <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.8.2/angular.min.js"></script>
     <script src="app.js"></script>
-    <style>
-        .auth-wrapper { background: url('https://www.transparenttextures.com/patterns/cubes.png'); }
-    </style>
 </head>
-<body ng-controller="AuthCtrl" class="bg-white">
-    <div ng-include="'components/navbar.html'"></div>
+<body ng-controller="AuthCtrl" class="auth-bg">
+    
+    <div class="auth-card">
+        <div class="text-center mb-4">
+            <h1 class="fw-bold text-success mb-0">Agrivendia</h1>
+            <p class="text-muted">Welcome back to the market</p>
+        </div>
 
-    <div class="auth-wrapper">
-        <div class="login-box bg-white shadow rounded border">
-            <h3 class="fw-bold text-center mb-1">Welcome Back</h3>
-            <p class="text-center text-muted mb-4">Login to access market</p>
-            <form ng-submit="loginCustomer()">
-                <div class="mb-3">
-                    <label class="form-label small fw-bold text-muted">EMAIL</label>
-                    <input type="email" class="form-control" ng-model="loginData.email" required>
+        <form ng-submit="loginCustomer()">
+            <div class="mb-3">
+                <label class="form-label small fw-bold text-uppercase text-muted">Email Address</label>
+                <input type="email" class="form-control" ng-model="loginData.email" required placeholder="name@example.com">
+            </div>
+            <div class="mb-4">
+                <label class="form-label small fw-bold text-uppercase text-muted">Password</label>
+                <input type="password" class="form-control" ng-model="loginData.password" required placeholder="••••••••">
+                <div class="text-end mt-2">
+                    <a href="forgot_password.html" class="small text-muted text-decoration-underline">Forgot password?</a>
                 </div>
-                <div class="mb-4">
-                    <label class="form-label small fw-bold text-muted">PASSWORD</label>
-                    <input type="password" class="form-control" ng-model="loginData.password" required>
-                    <div class="text-end mt-1"><a href="forgot_password.html" class="small text-success">Forgot Password?</a></div>
-                </div>
-                <button type="submit" class="btn-success-custom w-100">Login</button>
-            </form>
-            <div class="text-center mt-3 small">
-                New here? <a href="register.html" class="fw-bold text-success">Create Account</a>
+            </div>
+            <button type="submit" class="btn-primary-custom w-100 py-3 rounded-pill shadow-lg">Login Securely</button>
+        </form>
+
+        <div class="text-center mt-4 pt-3 border-top">
+            <p class="text-muted small">Don't have an account?</p>
+            <a href="register.html" class="btn btn-outline-custom btn-sm rounded-pill px-4">Create Account</a>
+            <div class="mt-3">
+                <a href="index.html" class="text-muted small"><i class="bi bi-arrow-left"></i> Back Home</a>
             </div>
         </div>
     </div>
+
 </body>
 </html>
 ```
@@ -907,79 +968,121 @@
     <title>Product Details</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
     <link href="css/styles.css" rel="stylesheet">
     <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.8.2/angular.min.js"></script>
     <script src="app.js"></script>
 </head>
-<body ng-controller="ProductDetailCtrl">
+<body ng-controller="ProductDetailCtrl" style="background-color: #f8f9fa;">
 
     <div ng-include="'components/admin_navbar.html'"></div>
 
-    <div class="container feature-box p-4" style="max-width: 1000px;">
-        <div class="row">
-            <div class="col-md-5">
-                <!-- UPDATED: Uses centralized helper instead of hardcoded 127.0.0.1 -->
-                <img ng-src="{{ getImageUrl(product) || 'https://via.placeholder.com/400' }}" class="img-fluid rounded shadow-sm w-100" style="height: 350px; object-fit: cover;">
-            </div>
-            <div class="col-md-7">
-                <h2 class="fw-bold">{{product.productName || product.buyerName}}</h2>
-                <h5 class="text-muted" ng-if="product.name && product.name != 'General'">{{product.name}}</h5>
-                <p class="text-muted mt-2"><i class="bi bi-geo-alt-fill"></i> {{product.location}}</p>
-                <h3 class="fw-bold" ng-class="{'text-success': product.type=='sell', 'text-primary': product.type=='buy'}">₹ {{product.price}} <span class="fs-6 text-muted">/ Unit</span></h3>
-                
-                <div class="p-3 bg-light rounded mt-3">
-                    <strong>Description:</strong>
-                    <p class="mb-0 text-muted">{{product.description || 'No description provided.'}}</p>
+    <div class="container pb-5">
+        <!-- PRODUCT CARD -->
+        <div class="bg-white rounded-4 shadow-sm overflow-hidden mb-4">
+            <div class="row g-0">
+                <div class="col-md-6 bg-light d-flex align-items-center justify-content-center p-4">
+                     <img ng-src="{{ getImageUrl(product) || 'https://via.placeholder.com/600' }}" class="img-fluid rounded-3 shadow-sm" style="max-height: 400px; width: 100%; object-fit: cover;">
                 </div>
-                <div class="mt-4">
-                    <label class="small fw-bold text-muted">CONTACT</label>
-                    <h5>{{product.sellerName || product.buyerName}}</h5>
-                    <div ng-if="isOwner" class="alert alert-info py-2 mt-2"><i class="bi bi-info-circle"></i> This is your post.</div>
+                <div class="col-md-6 p-5">
+                    <div class="badge rounded-pill bg-success-subtle text-success mb-2 px-3 fw-bold">{{product.type === 'sell' ? 'FOR SALE' : 'WANTED'}}</div>
+                    <h1 class="fw-bold mb-1">{{product.productName || product.buyerName}}</h1>
+                    <h5 class="text-muted mb-3" ng-if="product.name && product.name != 'General'">{{product.name}}</h5>
+                    
+                    <div class="d-flex align-items-center mb-4">
+                        <h2 class="text-success fw-bold m-0 me-3">₹ {{product.price}}</h2>
+                        <span class="text-muted">/ Unit</span>
+                    </div>
+
+                    <div class="row g-3 mb-4">
+                        <div class="col-6">
+                            <div class="p-3 bg-light rounded-3 text-center">
+                                <div class="small text-muted fw-bold">QUANTITY</div>
+                                <div class="h5 fw-bold m-0">{{product.quantity}}</div>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="p-3 bg-light rounded-3 text-center">
+                                <div class="small text-muted fw-bold">LOCATION</div>
+                                <div class="h5 fw-bold m-0">{{product.location}}</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mb-4">
+                        <h6 class="fw-bold text-uppercase text-muted small">Description</h6>
+                        <p class="text-secondary">{{product.description || 'No additional details provided.'}}</p>
+                    </div>
+
+                    <div class="d-flex align-items-center p-3 border rounded-3 bg-white">
+                        <div class="bg-dark text-white rounded-circle d-flex align-items-center justify-content-center me-3" style="width: 45px; height: 45px;">
+                            <i class="bi bi-person-fill"></i>
+                        </div>
+                        <div>
+                            <div class="small text-muted fw-bold">POSTED BY</div>
+                            <div class="fw-bold">{{product.sellerName || product.buyerName}}</div>
+                        </div>
+                        <div class="ms-auto" ng-if="isOwner">
+                            <span class="badge bg-info text-dark">Your Post</span>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
 
-        <hr class="my-5">
-
-        <div class="row">
-            <div class="col-12"><h4 class="fw-bold mb-4">Market Activity</h4></div>
-            
+        <!-- BIDS SECTION -->
+        <div class="row g-4">
+            <!-- BID FORM (If not owner) -->
             <div class="col-md-5" ng-if="!isOwner">
-                <div class="bg-light p-4 rounded border">
-                    <h5 class="fw-bold mb-3">Place Your Bid</h5>
+                <div class="bg-white p-4 rounded-4 shadow-sm h-100">
+                    <h4 class="fw-bold mb-3">Place an Offer</h4>
                     <form ng-submit="placeBid()">
-                        <div class="mb-3">
-                            <label class="form-label">Quantity</label>
-                            <input type="number" class="form-control" ng-model="bid.quantity" required>
+                        <div class="form-floating mb-3">
+                            <input type="number" class="form-control" id="qtyInput" ng-model="bid.quantity" placeholder="Quantity" required>
+                            <label for="qtyInput">Quantity Needed</label>
                         </div>
-                        <div class="mb-3">
-                            <label class="form-label">Your Price (₹)</label>
-                            <input type="number" class="form-control" ng-model="bid.amount" required>
+                        <div class="form-floating mb-3">
+                            <input type="number" class="form-control" id="priceInput" ng-model="bid.amount" placeholder="Price" required>
+                            <label for="priceInput">Your Price (₹)</label>
                         </div>
-                        <div class="mb-3">
-                            <label class="form-label">Message / Note</label>
-                            <textarea class="form-control" rows="2" ng-model="bid.message" placeholder="e.g. Can pick up tomorrow..."></textarea>
+                        <div class="form-floating mb-3">
+                            <textarea class="form-control" id="msgInput" style="height: 100px" ng-model="bid.message" placeholder="Message"></textarea>
+                            <label for="msgInput">Message (Optional)</label>
                         </div>
-                        <button type="submit" class="btn btn-success-custom w-100">Submit Bid</button>
+                        <button type="submit" class="btn btn-primary-custom w-100 py-3 rounded-pill">Submit Offer</button>
                     </form>
                 </div>
             </div>
 
-            <div class="col-md-7" ng-class="{'col-md-12': isOwner}">
-                <div ng-if="bids.length == 0" class="text-center py-5 text-muted"><i class="bi bi-inbox fs-1"></i><p>No bids yet.</p></div>
-                <div class="border rounded p-3 mb-2" ng-repeat="b in bids" ng-class="{'bg-success-subtle border-success': b.status === 'ACCEPTED'}">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <div>
-                            <div class="fw-bold">{{b.bidder_details.name}}</div>
-                            <div class="text-muted small">{{b.quantity}} Units at <strong>₹{{b.amount}}</strong></div>
-                            <div class="small text-dark mt-1" ng-if="b.message"><em>"{{b.message}}"</em></div>
-                        </div>
-                        <div class="text-end">
-                            <span class="badge mb-2 d-block" ng-class="{'bg-warning text-dark': b.status=='PENDING', 'bg-success': b.status=='ACCEPTED', 'bg-danger': b.status=='REJECTED'}">{{b.status}}</span>
-                            <div ng-if="isOwner && b.status === 'PENDING'">
-                                <button class="btn btn-sm btn-success me-1" ng-click="updateBidStatus(b, 'ACCEPTED')"><i class="bi bi-check-lg"></i></button>
-                                <button class="btn btn-sm btn-danger" ng-click="updateBidStatus(b, 'REJECTED')"><i class="bi bi-x-lg"></i></button>
+            <!-- BID LIST -->
+            <div class="{{isOwner ? 'col-12' : 'col-md-7'}}">
+                <div class="bg-white p-4 rounded-4 shadow-sm h-100">
+                    <h4 class="fw-bold mb-4">Offer History <span class="badge bg-light text-dark rounded-pill">{{bids.length}}</span></h4>
+                    
+                    <div ng-if="bids.length == 0" class="text-center py-5 text-muted">
+                        <i class="bi bi-chat-square-dots display-4 opacity-25"></i>
+                        <p class="mt-2">No offers yet. Be the first!</p>
+                    </div>
+
+                    <div class="vstack gap-3">
+                        <div ng-repeat="b in bids" class="p-3 border rounded-3 transition-hover" ng-class="{'border-success bg-success-subtle': b.status === 'ACCEPTED'}">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div>
+                                    <div class="fw-bold">{{b.bidder_details.name}}</div>
+                                    <div class="small text-muted">
+                                        Wants <strong class="text-dark">{{b.quantity}}</strong> units at <strong class="text-success fs-5">₹{{b.amount}}</strong>
+                                    </div>
+                                    <div class="mt-2 small bg-white p-2 rounded text-secondary border" ng-if="b.message">
+                                        <i class="bi bi-chat-quote me-1"></i> {{b.message}}
+                                    </div>
+                                </div>
+                                <div class="text-end">
+                                    <span class="badge rounded-pill mb-2" ng-class="{'bg-warning text-dark': b.status=='PENDING', 'bg-success': b.status=='ACCEPTED', 'bg-danger': b.status=='REJECTED'}">{{b.status}}</span>
+                                    
+                                    <div ng-if="isOwner && b.status === 'PENDING'" class="d-flex gap-1 justify-content-end mt-1">
+                                        <button class="btn btn-sm btn-success rounded-circle" ng-click="updateBidStatus(b, 'ACCEPTED')" title="Accept"><i class="bi bi-check-lg"></i></button>
+                                        <button class="btn btn-sm btn-outline-danger rounded-circle" ng-click="updateBidStatus(b, 'REJECTED')" title="Reject"><i class="bi bi-x-lg"></i></button>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -1092,14 +1195,16 @@
     <title>Sign Up - Agrivendia</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
     <link href="css/styles.css" rel="stylesheet">
     <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.8.2/angular.min.js"></script>
     <script src="app.js"></script>
 </head>
 <body ng-controller="AuthCtrl" style="background: #f4f7f6;">
-    <div ng-include="'components/navbar.html'"></div>
     
-    <div class="d-flex align-items-center justify-content-center" style="min-height:80vh;">
+    <!-- REMOVED: Navbar include -->
+    
+    <div class="d-flex align-items-center justify-content-center" style="min-height:100vh;">
         <div class="reg-card bg-white shadow-sm rounded border p-5" style="max-width:500px; width:100%;">
             <h3 class="fw-bold text-success text-center mb-4">Create Account</h3>
             <form ng-submit="register()">
@@ -1135,6 +1240,10 @@
             </form>
             <div class="text-center mt-3 small">
                 Already have an account? <a href="login.html" class="text-success fw-bold">Login</a>
+            </div>
+            <!-- ADDED: Back Link -->
+            <div class="text-center mt-3 pt-3 border-top">
+                <a href="index.html" class="text-secondary small text-decoration-none"><i class="bi bi-arrow-left"></i> Back to Home</a>
             </div>
         </div>
     </div>
@@ -1835,11 +1944,9 @@ app.controller('CustomerDashCtrl', function ($scope, $http, $rootScope, $window,
 <html lang="en" ng-app="userApp">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Agrivendia - Farm Market</title>
+    <title>Agrivendia - Fresh Farm Market</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link href="css/styles.css" rel="stylesheet">
     <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.8.2/angular.min.js"></script>
     <script src="app.js"></script>
@@ -1848,71 +1955,70 @@ app.controller('CustomerDashCtrl', function ($scope, $http, $rootScope, $window,
 
     <div ng-include="'components/navbar.html'" ng-init="activePage='home'"></div>
 
-    <!-- CAROUSEL -->
-    <div id="heroCarousel" class="carousel slide carousel-fade" data-bs-ride="carousel">
+    <!-- HERO CAROUSEL -->
+    <div id="heroCarousel" class="carousel slide carousel-fade hero-wrapper" data-bs-ride="carousel">
         <div class="carousel-indicators">
             <button type="button" data-bs-target="#heroCarousel" data-bs-slide-to="0" class="active"></button>
             <button type="button" data-bs-target="#heroCarousel" data-bs-slide-to="1"></button>
-            <button type="button" data-bs-target="#heroCarousel" data-bs-slide-to="2"></button>
         </div>
         <div class="carousel-inner">
             <div class="carousel-item active">
                 <img src="https://images.unsplash.com/photo-1500382017468-9049fed747ef?q=80&w=1932&auto=format&fit=crop" class="d-block w-100" alt="Farm">
                 <div class="carousel-caption d-none d-md-block">
-                    <h1>Fresh From Farm</h1>
-                    <p class="fs-4">Direct marketplace connecting farmers and buyers.</p>
+                    <h1>Cultivating Trust</h1>
+                    <p class="fs-4 text-light opacity-90">Direct marketplace connecting farmers and buyers.</p>
                 </div>
             </div>
             <div class="carousel-item">
-                <img src="https://images.unsplash.com/photo-1610348725531-843dff563e2c?q=80&w=1770&auto=format&fit=crop" class="d-block w-100" alt="Veg">
+                <img src="https://images.unsplash.com/photo-1605000797499-95a05f526b72?q=80&w=1932&auto=format&fit=crop" class="d-block w-100" alt="Tractor">
                 <div class="carousel-caption d-none d-md-block">
-                    <h1>Organic & Pure</h1>
-                    <p class="fs-4">Quality assured vegetables and fruits.</p>
-                </div>
-            </div>
-            <div class="carousel-item">
-                <img src="https://images.unsplash.com/photo-1586771107445-d3ca888129ff?q=80&w=1772&auto=format&fit=crop" class="d-block w-100" alt="Grains">
-                <div class="carousel-caption d-none d-md-block">
-                    <h1>Fair Pricing</h1>
-                    <p class="fs-4">Transparent rates for farmers and businesses.</p>
+                    <h1>Fair & Transparent</h1>
+                    <p class="fs-4 text-light opacity-90">Get the best price for your hard work.</p>
                 </div>
             </div>
         </div>
-        <button class="carousel-control-prev" type="button" data-bs-target="#heroCarousel" data-bs-slide="prev"><span class="carousel-control-prev-icon"></span></button>
-        <button class="carousel-control-next" type="button" data-bs-target="#heroCarousel" data-bs-slide="next"><span class="carousel-control-next-icon"></span></button>
     </div>
 
     <!-- SEARCH OVERLAP -->
     <div class="search-overlap">
         <form class="search-box" ng-submit="goToMarket()">
+            <i class="bi bi-search text-muted ms-3 fs-5"></i>
             <input type="text" class="search-input" ng-model="searchText" placeholder="Search for onions, wheat, apples...">
-            <button type="submit" class="search-btn"><i class="bi bi-search"></i> Search</button>
+            <button type="submit" class="search-btn">Find Products</button>
         </form>
     </div>
 
-    <!-- MAIN CONTENT -->
-    <div class="container pb-5 mt-5">
-        <div ng-repeat="section in homeSections" ng-if="section.items.length > 0">
-            <div class="d-flex justify-content-between align-items-center mb-4 mt-5">
-                <h3 class="fw-bold text-dark">{{section.title}}</h3>
-                <a href="market.html?cat={{section.title}}" class="text-success fw-bold">View All <i class="bi bi-arrow-right"></i></a>
+    <!-- MAIN SECTIONS -->
+    <div class="container py-5 mt-4">
+        
+        <div ng-repeat="section in homeSections" ng-if="section.items.length > 0" class="mb-5">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h3 class="fw-bold mb-0">{{section.title}}</h3>
+                    <p class="text-muted small m-0">Fresh from the harvest</p>
+                </div>
+                <a href="market.html?cat={{section.title}}" class="btn btn-outline-custom rounded-pill btn-sm">View All <i class="bi bi-arrow-right"></i></a>
             </div>
 
             <div class="row g-4">
                 <div class="col-lg-3 col-md-4 col-sm-6" ng-repeat="p in section.items | limitTo:4">
-                    <div class="product-card" ng-click="openProduct(p)">
-                        <div class="prod-img">
-                            <i class="bi bi-box-seam"></i>
-                            <div class="prod-badge"><i class="bi bi-check-circle-fill text-success"></i> Verified</div>
+                    <div class="card-hover" ng-click="openProduct(p)" style="cursor: pointer;">
+                        <div class="prod-img-wrap">
+                             <div class="badge-float"><i class="bi bi-patch-check-fill"></i> Verified</div>
+                             <!-- If image exists -->
+                             <img ng-if="getImageUrl(p)" ng-src="{{getImageUrl(p)}}" alt="{{p.productName}}">
+                             <!-- If no image -->
+                             <div ng-if="!getImageUrl(p)" class="d-flex align-items-center justify-content-center h-100 text-muted bg-light">
+                                <i class="bi bi-image fs-1 opacity-25"></i>
+                             </div>
                         </div>
-                        <div class="prod-details">
+                        <div class="prod-body">
                             <div class="prod-title">{{p.productName}}</div>
-                            <div class="prod-loc"><i class="bi bi-geo-alt"></i> {{p.location}}</div>
-                            <div class="d-flex justify-content-between align-items-center">
+                            <div class="prod-loc"><i class="bi bi-geo-alt-fill text-danger me-1"></i> {{p.location}}</div>
+                            <div class="d-flex justify-content-between align-items-end">
                                 <div class="prod-price">₹{{p.price}}</div>
-                                <small class="text-muted">{{p.quantity}} Qty</small>
+                                <div class="text-muted small fw-bold">{{p.quantity}} Units</div>
                             </div>
-                            <button class="btn-card-view">Buy Now</button>
                         </div>
                     </div>
                 </div>
@@ -1921,7 +2027,7 @@ app.controller('CustomerDashCtrl', function ($scope, $http, $rootScope, $window,
 
         <div class="text-center py-5" ng-if="homeSections.length === 0">
             <div class="spinner-border text-success" role="status"></div>
-            <p class="mt-2 text-muted">Loading fresh produce...</p>
+            <p class="mt-3 text-muted fw-bold">Loading marketplace...</p>
         </div>
     </div>
 
@@ -2141,98 +2247,315 @@ app.controller('CustomerDashCtrl', function ($scope, $http, $rootScope, $window,
 ## File: frontend/css/styles.css
 ```css
 # Path: frontend/css/styles.css
-/* GLOBAL SETTINGS */
-body { font-family: 'Poppins', sans-serif; background-color: #f8f9fa; }
-a { text-decoration: none; }
+/* Path: frontend/css/styles.css */
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap');
 
-/* NAVBAR */
-.navbar { background: white; box-shadow: 0 2px 10px rgba(0,0,0,0.05); padding: 15px 0; }
-.navbar-brand { font-weight: 700; color: #2E7D32 !important; font-size: 1.5rem; }
-.nav-link { font-weight: 600; color: #333; margin: 0 10px; text-transform: uppercase; font-size: 0.85rem; letter-spacing: 0.5px; }
-.nav-link:hover, .nav-link.active-link { color: #2E7D32 !important; }
-
-/* NAVBAR BUTTONS */
-.btn-login-nav { border: 2px solid #2E7D32; color: #2E7D32; border-radius: 50px; padding: 5px 22px; font-weight: 700; transition: 0.3s; }
-.btn-login-nav:hover { background: #2E7D32; color: white; }
-.btn-signup-nav { background: #2E7D32; color: white; border-radius: 50px; padding: 7px 22px; font-weight: 700; margin-left: 10px; transition: 0.3s; border: 2px solid #2E7D32; }
-.btn-signup-nav:hover { background: #1B5E20; border-color: #1B5E20; }
-
-/* DROPDOWN */
-.dropdown:hover .dropdown-menu { display: block; margin-top: 0; animation: fadeIn 0.3s; }
-.dropdown-menu { border: none; box-shadow: 0 10px 30px rgba(0,0,0,0.1); border-radius: 0 0 12px 12px; padding: 10px 0; min-width: 220px; }
-.dropdown-item { padding: 10px 20px; font-size: 0.9rem; transition: 0.2s; }
-.dropdown-item:hover { background: #f1f8e9; color: #2E7D32; padding-left: 25px; }
-@keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-
-/* FOOTER */
-footer { background: #212529; color: white; text-align: center; padding: 3rem 0; margin-top: 3rem; }
-
-/* COMMON BUTTONS */
-.btn-success-custom { background: #2E7D32; color: white; border: none; padding: 12px; border-radius: 8px; font-weight: 600; transition: 0.3s; }
-.btn-success-custom:hover { background: #1B5E20; color: white; }
-
-/* CARDS */
-.feature-box, .category-card, .plan-card, .reg-card, .login-box, .form-card, .admin-card {
-    background: white; border-radius: 15px; box-shadow: 0 5px 20px rgba(0,0,0,0.05); transition: 0.3s; border: 1px solid #eee; overflow: hidden;
+:root {
+    --primary: #2E7D32;
+    --primary-dark: #1B5E20;
+    --primary-light: #E8F5E9;
+    --accent: #FF9800;
+    --dark: #2c3e50;
+    --light: #f8f9fa;
+    --text-muted: #6c757d;
+    --shadow-sm: 0 2px 8px rgba(0,0,0,0.05);
+    --shadow-md: 0 8px 24px rgba(0,0,0,0.08);
+    --shadow-lg: 0 15px 35px rgba(0,0,0,0.1);
+    --radius: 16px;
 }
-.feature-box:hover, .category-card:hover, .plan-card:hover { transform: translateY(-5px); border-color: #2E7D32; }
 
-/* INDEX: HERO & SEARCH */
-.carousel-item { height: 400px; background-color: #333; }
-.carousel-item img { object-fit: cover; height: 100%; opacity: 0.7; }
-.carousel-caption h1 { font-weight: 800; font-size: 3.5rem; text-shadow: 2px 2px 4px rgba(0,0,0,0.8); }
-.search-overlap { margin-top: -40px; position: relative; z-index: 10; padding: 0 15px; }
-.search-box { background: white; padding: 15px; border-radius: 50px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); max-width: 700px; margin: 0 auto; display: flex; }
-.search-input { border: none; flex-grow: 1; padding: 10px 20px; border-radius: 50px; outline: none; }
-.search-btn { background: #2E7D32; color: white; border: none; padding: 10px 40px; border-radius: 50px; font-weight: 600; transition: 0.3s; }
-.search-btn:hover { background: #1B5E20; }
+body {
+    font-family: 'Poppins', sans-serif;
+    background-color: #f4f7f6;
+    color: var(--dark);
+    -webkit-font-smoothing: antialiased;
+}
 
-/* INDEX: PRODUCT CARD */
-.product-card { background: white; border: none; border-radius: 15px; box-shadow: 0 5px 15px rgba(0,0,0,0.05); transition: all 0.3s ease; height: 100%; cursor: pointer; overflow: hidden; }
-.product-card:hover { transform: translateY(-10px); box-shadow: 0 15px 30px rgba(0,0,0,0.1); }
-.prod-img { height: 180px; background: #f1f8e9; display: flex; align-items: center; justify-content: center; color: #2E7D32; font-size: 4rem; position: relative; }
-.prod-badge { position: absolute; top: 10px; right: 10px; background: rgba(255,255,255,0.9); padding: 5px 10px; border-radius: 10px; font-size: 0.75rem; font-weight: 700; color: #2E7D32; }
-.prod-details { padding: 20px; }
-.prod-title { font-weight: 700; font-size: 1.1rem; color: #333; margin-bottom: 5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.prod-price { color: #2E7D32; font-weight: 800; font-size: 1.4rem; }
-.btn-card-view { width: 100%; background: #e8f5e9; color: #2E7D32; border: none; padding: 10px; border-radius: 8px; font-weight: 600; margin-top: 10px; transition: 0.3s; }
-.product-card:hover .btn-card-view { background: #2E7D32; color: white; }
+a { text-decoration: none; transition: 0.3s; }
 
-/* MARKET: ECOM CARD */
-.ecom-card { background: white; border: 1px solid #f0f0f0; border-radius: 12px; overflow: hidden; transition: 0.2s; height: 100%; position: relative; cursor: pointer; display: flex; flex-direction: column; }
-.ecom-card:hover { transform: translateY(-5px); box-shadow: 0 8px 20px rgba(0,0,0,0.08); border-color: #2E7D32; }
-.card-img-wrap { height: 200px; width: 100%; background: #f9f9f9; overflow: hidden; position: relative; border-bottom: 1px solid #f0f0f0; }
-.card-img-wrap img { width: 100%; height: 100%; object-fit: cover; transition: 0.4s ease; }
-.ecom-card:hover .card-img-wrap img { transform: scale(1.05); }
-.badge-custom { position: absolute; top: 10px; right: 10px; background: rgba(255,255,255,0.95); padding: 5px 12px; border-radius: 50px; font-size: 0.75rem; font-weight: 700; color: #2E7D32; box-shadow: 0 2px 5px rgba(0,0,0,0.1); z-index: 2; }
-.badge-buy { background: #1565c0; color: white; left: 10px; right: auto; }
-.price-tag { font-weight: 800; font-size: 1.25rem; }
-.text-price-sell { color: #2E7D32; }
-.text-price-buy { color: #1565c0; }
+/* --- NAVBAR --- */
+.navbar {
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(10px);
+    box-shadow: var(--shadow-sm);
+    padding: 15px 0;
+}
 
-/* DASHBOARD: SIDEBAR & HEADER */
-.dash-header { background: #2E7D32; padding: 40px 0 80px; color: white; margin-bottom: 50px; }
-.stats-box { background: white; border-radius: 12px; padding: 25px; box-shadow: 0 5px 20px rgba(0,0,0,0.05); margin-top: -60px; text-align: center; border: 1px solid #eee; transition: 0.3s; }
-.stats-box:hover { transform: translateY(-5px); border-color: #2E7D32; }
-.sidebar { width: 260px; background: #263238; color: white; display: flex; flex-direction: column; flex-shrink: 0; height: 100vh; }
-.sidebar-header { padding: 25px; font-weight: 700; border-bottom: 1px solid #37474F; color: #4CAF50; font-size: 1.2rem; }
-.sidebar .nav-link { color: #cfd8dc; padding: 15px 25px; display: block; transition: 0.2s; cursor: pointer; font-size: 0.95rem; }
-.sidebar .nav-link:hover { background: #37474F; color: white; padding-left: 30px; }
-.sidebar .nav-link.active { background: #2E7D32; color: white; border-left: 5px solid #81C784; }
+.navbar-brand {
+    font-weight: 800;
+    color: var(--primary) !important;
+    font-size: 1.6rem;
+    letter-spacing: -0.5px;
+}
 
-/* FORMS & AUTH */
-.form-control { background: #f9f9f9; border: 1px solid #eee; padding: 12px; border-radius: 8px; }
-.form-control:focus { background: white; border-color: #2E7D32; box-shadow: 0 0 0 3px rgba(46, 125, 50, 0.1); }
-.auth-wrapper { flex: 1; display: flex; align-items: center; justify-content: center; height: 80vh; }
-.login-box { width: 450px; padding: 40px; }
-.reg-card { width: 500px; padding: 40px; }
+.nav-link {
+    font-weight: 500;
+    color: #555;
+    margin: 0 8px;
+    font-size: 0.95rem;
+    position: relative;
+}
 
-/* TABLES (Admin) */
-.custom-table thead th { background: #f1f8e9; color: #2E7D32; border: none; padding: 15px; font-weight: 600; }
-.custom-table tbody td { padding: 15px; border-bottom: 1px solid #eee; vertical-align: middle; }
-.action-btn { width: 35px; height: 35px; border-radius: 8px; display: inline-flex; align-items: center; justify-content: center; border: none; transition: 0.2s; margin-left: 5px; }
-.btn-edit { background: #e3f2fd; color: #1976d2; }
-.btn-delete { background: #ffebee; color: #d32f2f; }
+.nav-link:hover, .nav-link.active-link {
+    color: var(--primary) !important;
+}
+
+.nav-link.active-link::after {
+    content: '';
+    position: absolute;
+    width: 6px;
+    height: 6px;
+    background: var(--primary);
+    border-radius: 50%;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+}
+
+.btn-nav-login {
+    color: var(--primary);
+    font-weight: 600;
+    padding: 8px 20px;
+    border-radius: 50px;
+}
+
+.btn-nav-signup {
+    background: var(--primary);
+    color: white;
+    font-weight: 600;
+    padding: 8px 25px;
+    border-radius: 50px;
+    box-shadow: 0 4px 15px rgba(46, 125, 50, 0.3);
+}
+.btn-nav-signup:hover { background: var(--primary-dark); color: white; transform: translateY(-2px); }
+
+/* --- HERO & LANDING --- */
+.hero-wrapper {
+    position: relative;
+    border-radius: 0 0 30px 30px;
+    overflow: hidden;
+    box-shadow: var(--shadow-md);
+}
+
+.carousel-item {
+    height: 500px;
+}
+
+.carousel-item img {
+    object-fit: cover;
+    height: 100%;
+    filter: brightness(0.6);
+}
+
+.carousel-caption {
+    bottom: 35%;
+}
+
+.carousel-caption h1 {
+    font-size: 4rem;
+    font-weight: 800;
+    text-shadow: 0 4px 20px rgba(0,0,0,0.5);
+}
+
+/* Floating Search Bar */
+.search-overlap {
+    margin-top: -35px;
+    position: relative;
+    z-index: 10;
+    padding: 0 15px;
+}
+
+.search-box {
+    background: white;
+    padding: 10px;
+    border-radius: 50px;
+    box-shadow: var(--shadow-lg);
+    max-width: 750px;
+    margin: 0 auto;
+    display: flex;
+    align-items: center;
+}
+
+.search-input {
+    border: none;
+    flex-grow: 1;
+    padding: 15px 25px;
+    font-size: 1.1rem;
+    outline: none;
+    border-radius: 50px;
+}
+
+.search-btn {
+    background: var(--primary);
+    color: white;
+    border: none;
+    padding: 12px 35px;
+    border-radius: 40px;
+    font-weight: 600;
+    font-size: 1rem;
+    transition: 0.3s;
+}
+.search-btn:hover { background: var(--primary-dark); transform: scale(1.05); }
+
+/* --- CARDS --- */
+.card-hover {
+    background: white;
+    border: none;
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-sm);
+    transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+    overflow: hidden;
+    height: 100%;
+}
+
+.card-hover:hover {
+    transform: translateY(-8px);
+    box-shadow: var(--shadow-lg);
+}
+
+/* Product Card Specifics */
+.prod-img-wrap {
+    height: 220px;
+    background: #f1f1f1;
+    position: relative;
+    overflow: hidden;
+}
+
+.prod-img-wrap img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: 0.5s;
+}
+
+.card-hover:hover .prod-img-wrap img { transform: scale(1.1); }
+
+.badge-float {
+    position: absolute;
+    top: 15px;
+    right: 15px;
+    background: rgba(255, 255, 255, 0.9);
+    backdrop-filter: blur(5px);
+    padding: 6px 14px;
+    border-radius: 30px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: var(--primary);
+    z-index: 2;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+}
+
+.prod-body { padding: 20px; }
+.prod-title { font-weight: 700; font-size: 1.15rem; color: var(--dark); margin-bottom: 5px; }
+.prod-price { color: var(--primary); font-size: 1.3rem; font-weight: 800; }
+.prod-loc { color: var(--text-muted); font-size: 0.9rem; margin-bottom: 15px; }
+
+/* --- BUTTONS --- */
+.btn-primary-custom {
+    background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+    border: none;
+    color: white;
+    padding: 12px 25px;
+    border-radius: 10px;
+    font-weight: 600;
+    transition: 0.3s;
+    box-shadow: 0 4px 15px rgba(46, 125, 50, 0.3);
+}
+.btn-primary-custom:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(46, 125, 50, 0.4);
+    color: white;
+}
+
+.btn-outline-custom {
+    background: transparent;
+    border: 2px solid #e0e0e0;
+    color: #555;
+    border-radius: 10px;
+    padding: 10px 20px;
+    font-weight: 600;
+}
+.btn-outline-custom:hover {
+    border-color: var(--primary);
+    color: var(--primary);
+    background: var(--primary-light);
+}
+
+/* --- FORMS --- */
+.form-control, .form-select {
+    border: 1px solid #e0e0e0;
+    background: #fbfbfb;
+    padding: 14px 20px;
+    border-radius: 12px;
+    font-size: 0.95rem;
+    transition: 0.3s;
+}
+.form-control:focus, .form-select:focus {
+    background: white;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 4px rgba(46, 125, 50, 0.1);
+}
+
+/* --- DASHBOARD --- */
+.dash-sidebar {
+    background: white;
+    width: 280px;
+    height: 100vh;
+    position: fixed;
+    border-right: 1px solid #eee;
+    padding: 20px;
+}
+.stat-card {
+    background: white;
+    border-radius: 20px;
+    padding: 25px;
+    box-shadow: var(--shadow-sm);
+    border: 1px solid rgba(0,0,0,0.02);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+.stat-icon {
+    width: 60px;
+    height: 60px;
+    border-radius: 15px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.8rem;
+}
+
+/* --- LOGIN / AUTH --- */
+.auth-bg {
+    background: linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%);
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.auth-card {
+    background: white;
+    padding: 40px;
+    border-radius: 24px;
+    box-shadow: var(--shadow-lg);
+    width: 100%;
+    max-width: 450px;
+}
+
+/* --- FOOTER --- */
+footer {
+    background: #1a1f24;
+    color: #aeb5bc;
+    padding: 60px 0 30px;
+    margin-top: 60px;
+}
+.footer-title { color: white; font-weight: 700; margin-bottom: 20px; font-size: 1.5rem; }
+.social-icon {
+    width: 40px; height: 40px; background: rgba(255,255,255,0.1);
+    display: inline-flex; align-items: center; justify-content: center;
+    border-radius: 50%; color: white; margin-right: 10px; transition: 0.3s;
+}
+.social-icon:hover { background: var(--primary); transform: translateY(-3px); }
 ```
 
 ---
@@ -2260,37 +2583,41 @@ footer { background: #212529; color: white; text-align: center; padding: 3rem 0;
 # Path: frontend/components/navbar.html
 <nav class="navbar navbar-expand-lg sticky-top">
     <div class="container">
-        <a class="navbar-brand" href="index.html"><i class="bi bi-flower1"></i> Agrivendia</a>
+        <a class="navbar-brand d-flex align-items-center" href="index.html">
+            <i class="bi bi-flower1 me-2 text-success"></i> Agrivendia
+        </a>
         
-        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
-            <span class="navbar-toggler-icon"></span>
+        <button class="navbar-toggler border-0 shadow-none" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+            <i class="bi bi-list fs-1 text-dark"></i>
         </button>
 
         <div class="collapse navbar-collapse" id="navbarNav">
-            <ul class="navbar-nav mx-auto">
+            <ul class="navbar-nav mx-auto mb-2 mb-lg-0">
                 <li class="nav-item"><a class="nav-link" ng-class="{'active-link': activePage=='home'}" href="index.html">Home</a></li>
+                <li class="nav-item"><a class="nav-link" ng-class="{'active-link': activePage=='market'}" href="market.html">Marketplace</a></li>
                 <li class="nav-item"><a class="nav-link" ng-class="{'active-link': activePage=='category'}" href="category.html">Categories</a></li>
-                <li class="nav-item"><a class="nav-link" ng-class="{'active-link': activePage=='market'}" href="market.html">Market</a></li>
                 <li class="nav-item"><a class="nav-link" ng-class="{'active-link': activePage=='plan'}" href="plan.html">Plans</a></li>
-                <li class="nav-item"><a class="nav-link" ng-class="{'active-link': activePage=='about'}" href="about.html">About Us</a></li>
+                <li class="nav-item"><a class="nav-link" ng-class="{'active-link': activePage=='about'}" href="about.html">About</a></li>
             </ul>
 
-            <div class="d-flex align-items-center">
+            <div class="d-flex align-items-center gap-2">
                 <!-- Logged In -->
                 <div ng-if="currentUser" class="dropdown">
-                    <a class="nav-link dropdown-toggle text-success fw-bold p-0" href="#" data-bs-toggle="dropdown">
-                        <i class="bi bi-person-circle"></i> Hi, {{currentUser.name}}
+                    <a class="nav-link dropdown-toggle fw-bold text-dark d-flex align-items-center" href="#" data-bs-toggle="dropdown">
+                        <div class="bg-success-subtle text-success rounded-circle d-flex align-items-center justify-content-center me-2" style="width: 35px; height: 35px;">
+                            {{currentUser.name.charAt(0)}}
+                        </div>
+                        {{currentUser.name}}
                     </a>
-                    <ul class="dropdown-menu dropdown-menu-end shadow border-0 mt-2">
-                        <li><a class="dropdown-item" href="customer_dashboard.html"><i class="bi bi-speedometer2 me-2"></i> My Dashboard</a></li>
-                        <li><hr class="dropdown-divider"></li>
-                        <li><a class="dropdown-item" href="#" ng-click="logout()"><i class="bi bi-box-arrow-right me-2"></i> Logout</a></li>
+                    <ul class="dropdown-menu dropdown-menu-end shadow border-0 rounded-4 mt-2 p-2">
+                        <li><a class="dropdown-item rounded-3 mb-1" href="customer_dashboard.html"><i class="bi bi-grid-fill me-2 text-primary"></i> Dashboard</a></li>
+                        <li><a class="dropdown-item rounded-3 text-danger" href="#" ng-click="logout()"><i class="bi bi-box-arrow-right me-2"></i> Logout</a></li>
                     </ul>
                 </div>
                 <!-- Logged Out -->
-                <div ng-if="!currentUser" class="d-flex">
-                    <a href="login.html" class="btn-login-nav">Login</a>
-                    <a href="register.html" class="btn-signup-nav">Sign Up</a>
+                <div ng-if="!currentUser" class="d-flex gap-2">
+                    <a href="login.html" class="btn btn-outline-custom border-0 rounded-pill px-3">Login</a>
+                    <a href="register.html" class="btn btn-primary-custom rounded-pill px-4 py-2 small">Sign Up</a>
                 </div>
             </div>
         </div>
@@ -2303,11 +2630,14 @@ footer { background: #212529; color: white; text-align: center; padding: 3rem 0;
 ## File: frontend/components/admin_navbar.html
 ```html
 # Path: frontend/components/admin_navbar.html
-<!-- Simplified Header for Forms -->
-<nav class="navbar mb-4 border-bottom">
+<nav class="navbar mb-4 bg-white border-bottom shadow-none py-3">
     <div class="container">
-        <a class="navbar-brand fw-bold text-success" href="index.html">Agrivendia <span class="badge bg-success rounded-pill small ms-2" style="font-size:0.7rem;">Portal</span></a>
-        <a href="javascript:history.back()" class="btn btn-sm btn-outline-secondary rounded-pill px-3"><i class="bi bi-arrow-left"></i> Back</a>
+        <a class="navbar-brand fw-bold text-dark d-flex align-items-center" href="index.html">
+            <i class="bi bi-flower1 text-success me-2"></i> Agrivendia
+        </a>
+        <a href="javascript:history.back()" class="btn btn-light rounded-pill px-3 fw-bold text-muted small hover-shadow">
+            <i class="bi bi-arrow-left me-1"></i> Back
+        </a>
     </div>
 </nav>
 ```

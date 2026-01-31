@@ -5,87 +5,98 @@
     <title>Admin Dashboard</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
     <link href="css/styles.css" rel="stylesheet">
     <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.8.2/angular.min.js"></script>
     <script src="app.js"></script>
+    <style>
+        .admin-layout { display: flex; height: 100vh; overflow: hidden; }
+        .sidebar { width: 260px; background: #1e293b; color: #94a3b8; flex-shrink: 0; display: flex; flex-direction: column; }
+        .sidebar-brand { padding: 25px; color: white; font-weight: 700; font-size: 1.2rem; border-bottom: 1px solid #334155; }
+        .nav-item-admin { padding: 12px 25px; cursor: pointer; transition: 0.2s; display: flex; align-items: center; border-left: 4px solid transparent; }
+        .nav-item-admin:hover { color: white; background: #334155; }
+        .nav-item-admin.active { background: #0f172a; color: #4ade80; border-left-color: #4ade80; }
+        .main-content { flex-grow: 1; background: #f1f5f9; overflow-y: auto; padding: 30px; }
+        .table-card { background: white; border-radius: 16px; box-shadow: var(--shadow-sm); overflow: hidden; }
+        .table thead th { background: #f8fafc; color: #64748b; font-weight: 600; text-transform: uppercase; font-size: 0.8rem; border-bottom: 2px solid #e2e8f0; }
+    </style>
 </head>
-<!-- FIXED: Added height: 100vh to ensure internal scrolling works -->
-<body ng-controller="AdminDashCtrl" style="display: flex; overflow: hidden; background: #f4f6f8; height: 100vh;">
+<body ng-controller="AdminDashCtrl">
 
-    <!-- SIDEBAR -->
-    <div class="sidebar">
-        <div class="sidebar-header"><i class="bi bi-shield-lock-fill me-2"></i> Admin Portal</div>
-        <nav class="mt-3">
-            <div class="nav-link" ng-class="{'active': activeTab=='categories'}" ng-click="switchTab('categories')"><i class="bi bi-tags me-2"></i> Categories</div>
-            <div class="nav-link" ng-class="{'active': activeTab=='products'}" ng-click="switchTab('products')"><i class="bi bi-box me-2"></i> Products</div>
-            <div class="nav-link" ng-class="{'active': activeTab=='plans'}" ng-click="switchTab('plans')"><i class="bi bi-card-checklist me-2"></i> Plans</div>
-            <div class="nav-link" ng-class="{'active': activeTab=='customers'}" ng-click="switchTab('customers')"><i class="bi bi-people me-2"></i> Customers</div>
-        </nav>
-        <div class="mt-auto p-3"><a href="index.html" class="btn btn-outline-secondary w-100 text-light border-secondary">Back to Site</a></div>
-    </div>
-
-    <!-- MAIN CONTENT -->
-    <div style="flex: 1; padding: 30px; overflow-y: auto;">
-        <div class="d-flex justify-content-between align-items-center mb-4">
-            <h3 class="fw-bold text-dark text-capitalize">{{activeTab.replace('_', ' ')}}</h3>
-            <div class="d-flex gap-2">
-                <form class="d-flex bg-white p-1 rounded border shadow-sm">
-                    <input type="file" id="csvFile" class="form-control form-control-sm border-0" accept=".csv">
-                    <button type="button" class="btn btn-dark btn-sm rounded" ng-click="uploadCSV()"><i class="bi bi-upload"></i></button>
-                </form>
-                <button class="btn btn-success btn-sm px-3 fw-bold" data-bs-toggle="modal" data-bs-target="#editModal" ng-click="openAdd()"><i class="bi bi-plus-lg"></i> Add</button>
+    <div class="admin-layout">
+        <!-- SIDEBAR -->
+        <div class="sidebar">
+            <div class="sidebar-brand"><i class="bi bi-shield-check me-2 text-success"></i> Admin Panel</div>
+            <div class="mt-4">
+                <div class="nav-item-admin" ng-class="{'active': activeTab=='categories'}" ng-click="switchTab('categories')"><i class="bi bi-tags me-3"></i> Categories</div>
+                <div class="nav-item-admin" ng-class="{'active': activeTab=='products'}" ng-click="switchTab('products')"><i class="bi bi-box-seam me-3"></i> Products</div>
+                <div class="nav-item-admin" ng-class="{'active': activeTab=='plans'}" ng-click="switchTab('plans')"><i class="bi bi-credit-card me-3"></i> Plans</div>
+                <div class="nav-item-admin" ng-class="{'active': activeTab=='customers'}" ng-click="switchTab('customers')"><i class="bi bi-people me-3"></i> Customers</div>
+            </div>
+            <div class="mt-auto p-4 border-top border-secondary">
+                <a href="index.html" class="btn btn-outline-secondary w-100 text-light border-secondary btn-sm">Exit to Site</a>
             </div>
         </div>
 
-        <div class="admin-card">
-            <table class="table table-hover mb-0 custom-table">
-                <thead><tr><th ng-repeat="field in currentSchema">{{field.label}}</th><th class="text-end">Actions</th></tr></thead>
-                <tbody>
-                    <tr ng-repeat="row in tableData">
-                        <td ng-repeat="field in currentSchema">
-                            <span ng-if="!field.key.includes('Image')">{{row[field.key]}}</span>
-                            <img ng-if="field.key.includes('Image')" ng-src="{{row[field.key]}}" style="height:30px;">
-                        </td>
-                        <td class="text-end">
-                             <button class="action-btn btn-edit" ng-click="editRow(row)" data-bs-toggle="modal" data-bs-target="#editModal"><i class="bi bi-pencil-fill"></i></button>
-                             <button class="action-btn btn-delete" ng-click="deleteRow(row.id)"><i class="bi bi-trash-fill"></i></button>
-                        </td>
-                    </tr>
-                </tbody>
-            </table>
+        <!-- MAIN -->
+        <div class="main-content">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h3 class="fw-bold text-dark text-capitalize m-0">{{activeTab.replace('_', ' ')}} Management</h3>
+                <div class="d-flex gap-2">
+                    <form class="d-flex bg-white p-1 rounded shadow-sm border">
+                        <input type="file" id="csvFile" class="form-control form-control-sm border-0 shadow-none" accept=".csv">
+                        <button type="button" class="btn btn-dark btn-sm rounded" ng-click="uploadCSV()"><i class="bi bi-upload"></i></button>
+                    </form>
+                    <button class="btn btn-success btn-sm px-3 fw-bold rounded-pill shadow-sm" data-bs-toggle="modal" data-bs-target="#editModal" ng-click="openAdd()"><i class="bi bi-plus-lg me-1"></i> Add New</button>
+                </div>
+            </div>
+
+            <div class="table-card">
+                <table class="table table-hover mb-0 align-middle">
+                    <thead><tr><th ng-repeat="field in currentSchema">{{field.label}}</th><th class="text-end">Actions</th></tr></thead>
+                    <tbody>
+                        <tr ng-repeat="row in tableData">
+                            <td ng-repeat="field in currentSchema">
+                                <span ng-if="!field.key.includes('Image')">{{row[field.key]}}</span>
+                                <img ng-if="field.key.includes('Image')" ng-src="{{row[field.key]}}" style="height:35px; border-radius: 6px;">
+                            </td>
+                            <td class="text-end">
+                                 <button class="btn btn-light btn-sm text-primary" ng-click="editRow(row)" data-bs-toggle="modal" data-bs-target="#editModal"><i class="bi bi-pencil-fill"></i></button>
+                                 <button class="btn btn-light btn-sm text-danger" ng-click="deleteRow(row.id)"><i class="bi bi-trash-fill"></i></button>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+                <div ng-if="tableData.length === 0" class="p-5 text-center text-muted">No records found.</div>
+            </div>
         </div>
     </div>
 
     <!-- MODAL -->
-    <div class="modal fade" id="editModal">
+    <div class="modal fade" id="editModal" tabindex="-1">
         <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content border-0 shadow">
-                <div class="modal-header bg-success text-white">
-                    <h5 class="modal-title">{{ editMode ? 'Edit' : 'Add' }} Record</h5>
+            <div class="modal-content border-0 shadow-lg rounded-4">
+                <div class="modal-header bg-success text-white rounded-top-4">
+                    <h5 class="modal-title fw-bold">{{ editMode ? 'Edit' : 'Add' }} Record</h5>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                 </div>
-                <div class="modal-body">
+                <div class="modal-body p-4">
                     <form id="adminForm">
                         <div class="mb-3" ng-repeat="field in currentSchema">
-                            <label class="form-label small fw-bold text-muted">{{field.label}}</label>
+                            <label class="form-label small fw-bold text-muted text-uppercase">{{field.label}}</label>
                             
-                            <!-- Standard Inputs -->
                             <input ng-if="field.type != 'textarea' && field.type != 'select'" type="{{field.type}}" class="form-control" ng-model="currentItem[field.key]">
                             
-                            <!-- Textarea -->
                             <textarea ng-if="field.type == 'textarea'" class="form-control" rows="3" ng-model="currentItem[field.key]"></textarea>
                             
-                            <!-- Dropdown (Specific logic for categories) -->
                             <select ng-if="field.type == 'select'" class="form-select" ng-model="currentItem[field.key]" ng-options="opt.id as opt.name for opt in getOptions(field.options)">
                                 <option value="">Select {{field.label}}</option>
                             </select>
                         </div>
                     </form>
                 </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary rounded-pill" data-bs-dismiss="modal">Cancel</button>
-                    <button type="button" class="btn btn-success rounded-pill" ng-click="saveRow()">Save</button>
+                <div class="modal-footer border-0 pt-0">
+                    <button type="button" class="btn btn-light rounded-pill px-4" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-success rounded-pill px-4" ng-click="saveRow()">Save Changes</button>
                 </div>
             </div>
         </div>

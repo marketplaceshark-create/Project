@@ -2,164 +2,242 @@
 <html lang="en" ng-app="userApp">
 <head>
     <meta charset="UTF-8">
-    <title>My Dashboard - Agrivendia</title>
+    <title>Dashboard - Agrivendia</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
     <link href="css/styles.css" rel="stylesheet">
     <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.8.2/angular.min.js"></script>
     <script src="app.js"></script>
-    <style>
-        .nav-pills .nav-link.active { background-color: #2E7D32; }
-        .nav-pills .nav-link { color: #555; font-weight: 600; border-radius: 50px; padding: 10px 25px; margin: 0 5px; }
-        .listing-card { border-left: 5px solid transparent; margin-bottom: 20px; }
-        .listing-card.sell { border-color: #2E7D32; }
-        .listing-card.buy { border-color: #0d6efd; }
-        .bid-item { background: #f8f9fa; border-radius: 8px; padding: 15px; margin-top: 10px; }
-        .hover-link:hover { text-decoration: underline !important; color: #2E7D32 !important; }
-    </style>
 </head>
-<body ng-controller="CustomerDashCtrl">
-
-    <!-- HEADER -->
-    <div class="dash-header">
-        <div class="container d-flex justify-content-between align-items-center">
-            <div>
-                <h2 class="fw-bold m-0"><i class="bi bi-grid-fill me-2"></i> Dashboard</h2>
-                <p class="mb-0 opacity-75">Welcome back, {{currentUser.name}}</p>
+<body ng-controller="CustomerDashCtrl" style="background: #f8f9fa;">
+    
+    <!-- TOAST CONTAINER -->
+    <div id="toast-container">
+        <div class="custom-toast" ng-repeat="t in toasts" ng-class="t.type">
+            <div class="toast-icon">
+                <i class="bi" ng-class="{'bi-check-circle-fill': t.type=='success', 'bi-x-circle-fill': t.type=='error', 'bi-info-circle-fill': t.type=='info'}"></i>
             </div>
-            <div class="d-flex gap-2">
-                <a href="index.html" class="btn btn-outline-light rounded-pill btn-sm px-3">Home</a>
-                <button ng-click="logout()" class="btn btn-warning rounded-pill btn-sm px-3 fw-bold">Logout</button>
-            </div>
+            <div class="fw-bold">{{t.message}}</div>
         </div>
     </div>
 
-    <div class="container pb-5">
+    <div ng-include="'components/navbar.html'" ng-init="activePage='dashboard'"></div>
+
+    <div class="container py-5">
+        <!-- HEADER -->
+        <div class="d-flex justify-content-between align-items-center mb-5">
+            <div class="d-flex align-items-center">
+                <!-- Profile Image Display -->
+                <div class="me-4 position-relative">
+                     <img ng-src="{{ getImageUrl(currentUser) || 'https://via.placeholder.com/150' }}" 
+                          class="rounded-circle shadow-sm border border-3 border-white" 
+                          style="width: 80px; height: 80px; object-fit: cover;">
+                </div>
+                <div>
+                    <h2 class="fw-bold m-0 text-dark">Hello, {{currentUser.name}}</h2>
+                    <p class="text-muted m-0">Manage your listings and account</p>
+                </div>
+            </div>
+            <button ng-click="logout()" class="btn btn-outline-danger rounded-pill px-4 btn-sm">Logout</button>
+        </div>
+
         <!-- STATS -->
-        <div class="row mb-5">
-            <div class="col-md-4"><div class="stats-box"><h2 class="fw-bold text-success">{{myListings.length}}</h2><small class="fw-bold text-muted">ACTIVE SALES</small></div></div>
-            <div class="col-md-4"><div class="stats-box"><h2 class="fw-bold text-primary">{{myBuyRequests.length}}</h2><small class="fw-bold text-muted">BUY REQUESTS</small></div></div>
-            <div class="col-md-4"><div class="stats-box"><h2 class="fw-bold text-warning">{{incomingBidsCount}}</h2><small class="fw-bold text-muted">PENDING BIDS</small></div></div>
+        <div class="row g-4 mb-5">
+            <div class="col-md-4">
+                <div class="stat-card">
+                    <div><div class="text-muted small fw-bold text-uppercase">Active Sales</div><h2 class="fw-bold text-dark m-0">{{myListings.length}}</h2></div>
+                    <div class="stat-icon bg-success-subtle text-success"><i class="bi bi-shop"></i></div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="stat-card">
+                    <div><div class="text-muted small fw-bold text-uppercase">Buy Requests</div><h2 class="fw-bold text-dark m-0">{{myBuyRequests.length}}</h2></div>
+                    <div class="stat-icon bg-primary-subtle text-primary"><i class="bi bi-cart"></i></div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="stat-card">
+                    <div><div class="text-muted small fw-bold text-uppercase">Pending Bids</div><h2 class="fw-bold text-dark m-0">{{incomingBidsCount}}</h2></div>
+                    <div class="stat-icon bg-warning-subtle text-warning"><i class="bi bi-bell"></i></div>
+                </div>
+            </div>
         </div>
 
-        <!-- TABS -->
-        <ul class="nav nav-pills justify-content-center mb-4">
-            <li class="nav-item"><a class="nav-link" ng-class="{'active': activeTab == 'sell'}" ng-click="activeTab = 'sell'">My Sales</a></li>
-            <li class="nav-item"><a class="nav-link" ng-class="{'active': activeTab == 'requests'}" ng-click="activeTab = 'requests'">My Requests</a></li>
-            <li class="nav-item"><a class="nav-link" ng-class="{'active': activeTab == 'bids'}" ng-click="activeTab = 'bids'">My Offers</a></li>
-        </ul>
+        <!-- TABS & CONTENT -->
+        <div class="bg-white p-4 rounded-4 shadow-sm border">
+            <!-- Navigation Tabs -->
+            <ul class="nav nav-pills nav-fill mb-4 p-1 bg-light rounded-pill" style="max-width: 800px; margin: 0 auto;">
+                <li class="nav-item">
+                    <a class="nav-link rounded-pill" ng-class="{'active bg-white shadow-sm text-success': activeTab == 'sell'}" ng-click="activeTab = 'sell'" href="#">My Sales</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link rounded-pill" ng-class="{'active bg-white shadow-sm text-primary': activeTab == 'requests'}" ng-click="activeTab = 'requests'" href="#">My Requests</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link rounded-pill" ng-class="{'active bg-white shadow-sm text-dark': activeTab == 'bids'}" ng-click="activeTab = 'bids'" href="#">My Offers</a>
+                </li>
+                <!-- NEW SETTINGS TAB -->
+                <li class="nav-item">
+                    <a class="nav-link rounded-pill" ng-class="{'active bg-white shadow-sm text-secondary': activeTab == 'settings'}" ng-click="activeTab = 'settings'" href="#"><i class="bi bi-gear-fill me-1"></i> Settings</a>
+                </li>
+            </ul>
 
-        <!-- TAB CONTENT: SALES -->
-        <div ng-show="activeTab == 'sell'">
-            <div class="d-flex justify-content-between mb-3">
-                <h5 class="fw-bold text-success">Selling</h5>
-                <a href="product_sell.html" class="btn btn-success rounded-pill btn-sm fw-bold"><i class="bi bi-plus-lg"></i> Post Sale</a>
-            </div>
-            <div class="listing-card feature-box p-4 sell" ng-repeat="item in myListings">
-                <div class="d-flex justify-content-between">
-                    <div>
-                        <h5 class="fw-bold">
-                            <a href="product_detail.html?id={{item.id}}&type=sell" class="text-dark text-decoration-none hover-link">{{item.productName}} <small class="text-muted">({{item.name}})</small></a>
-                        </h5>
-                        <div class="small text-muted">{{item.quantity}} Units | ₹{{item.price}} | {{item.location}}</div>
-                    </div>
-                    <div>
-                        <!-- NEW: DELETE BUTTON -->
-                        <button class="btn btn-sm btn-outline-danger rounded-pill me-2" ng-click="deletePost(item.id, 'sell')"><i class="bi bi-trash"></i></button>
-                        <button class="btn btn-sm btn-outline-secondary rounded-pill" ng-click="item.showBids = !item.showBids">
-                            {{item.showBids ? 'Hide Offers' : 'View Offers'}}
-                            <span class="badge bg-danger rounded-pill ms-1" ng-if="getPendingBidCount(item.id, 'sell') > 0">{{getPendingBidCount(item.id, 'sell')}}</span>
-                        </button>
-                    </div>
-                </div>
-                <div ng-if="item.showBids" class="mt-3 border-top pt-3">
-                    <div ng-repeat="bid in getBidsForProduct(item.id, 'sell')" class="bid-item d-flex justify-content-between align-items-center">
-                        <div>
-                            <strong>{{bid.bidder_details.name}}</strong> wants {{bid.quantity}} units at <strong class="text-success">₹{{bid.amount}}</strong>
-                            <div ng-if="bid.status == 'ACCEPTED'" class="mt-1 small bg-success-subtle p-2 rounded text-success border border-success">
-                                <i class="bi bi-telephone-fill"></i> Contact: {{bid.bidder_details.phone}} | {{bid.bidder_details.email}}
+            <!-- 1. MY SALES -->
+            <div ng-show="activeTab == 'sell'">
+                <div class="text-end mb-3"><a href="product_sell.html" class="btn btn-primary-custom rounded-pill btn-sm"><i class="bi bi-plus-lg"></i> Sell Produce</a></div>
+                <div class="card mb-3 border-0 shadow-sm" ng-repeat="item in myListings">
+                    <div class="card-body p-4">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div class="d-flex align-items-center">
+                                <div class="bg-success-subtle p-3 rounded-circle me-3 text-success"><i class="bi bi-box-seam fs-4"></i></div>
+                                <div>
+                                    <h5 class="fw-bold mb-1"><a href="product_detail.html?id={{item.id}}&type=sell" class="text-dark text-decoration-none">{{item.productName}}</a></h5>
+                                    <div class="text-muted small">₹{{item.price}} • {{item.quantity}} Units • {{item.location}}</div>
+                                </div>
+                            </div>
+                            <div>
+                                <button class="btn btn-light btn-sm rounded-pill text-danger me-2" ng-click="deletePost(item.id, 'sell')"><i class="bi bi-trash"></i></button>
+                                <button class="btn btn-outline-custom btn-sm rounded-pill" ng-click="item.showBids = !item.showBids">
+                                    {{item.showBids ? 'Close' : 'Offers'}}
+                                    <span class="badge bg-danger ms-1" ng-if="getPendingBidCount(item.id, 'sell') > 0">{{getPendingBidCount(item.id, 'sell')}}</span>
+                                </button>
                             </div>
                         </div>
-                        <div ng-if="bid.status == 'PENDING'">
-                            <button class="btn btn-sm btn-success rounded-pill" ng-click="updateBid(bid, 'ACCEPTED')">Accept</button>
-                            <button class="btn btn-sm btn-outline-danger rounded-pill" ng-click="updateBid(bid, 'REJECTED')">Reject</button>
-                        </div>
-                        <div ng-if="bid.status != 'PENDING'" class="badge" ng-class="{'bg-success': bid.status=='ACCEPTED', 'bg-danger': bid.status=='REJECTED'}">{{bid.status}}</div>
-                    </div>
-                    <div ng-if="getBidsForProduct(item.id, 'sell').length == 0" class="text-muted small">No offers yet.</div>
-                </div>
-            </div>
-        </div>
-
-        <!-- TAB CONTENT: BUY REQUESTS -->
-        <div ng-show="activeTab == 'requests'">
-            <div class="d-flex justify-content-between mb-3">
-                <h5 class="fw-bold text-primary">Buying</h5>
-                <a href="product_buy.html" class="btn btn-primary rounded-pill btn-sm fw-bold"><i class="bi bi-plus-lg"></i> Post Request</a>
-            </div>
-            <div class="listing-card feature-box p-4 buy" ng-repeat="item in myBuyRequests">
-                <div class="d-flex justify-content-between">
-                    <div>
-                        <h5 class="fw-bold">
-                             <a href="product_detail.html?id={{item.id}}&type=buy" class="text-dark text-decoration-none hover-link">{{item.productName || item.name || 'General Request'}}</a>
-                        </h5>
-                        <div class="small text-muted">Need {{item.quantity}} Units | Target: ₹{{item.price}} | {{item.location}}</div>
-                    </div>
-                    <div>
-                        <!-- NEW: DELETE BUTTON -->
-                        <button class="btn btn-sm btn-outline-danger rounded-pill me-2" ng-click="deletePost(item.id, 'buy')"><i class="bi bi-trash"></i></button>
-                        <button class="btn btn-sm btn-outline-secondary rounded-pill" ng-click="item.showBids = !item.showBids">View Sellers</button>
-                    </div>
-                </div>
-                <div ng-if="item.showBids" class="mt-3 border-top pt-3">
-                    <div ng-repeat="bid in getBidsForProduct(item.id, 'buy')" class="bid-item d-flex justify-content-between align-items-center">
-                        <div>
-                            <strong>{{bid.bidder_details.name}}</strong> offers {{bid.quantity}} units at <strong class="text-success">₹{{bid.amount}}</strong>
-                            <div ng-if="bid.status == 'ACCEPTED'" class="mt-1 small bg-primary-subtle p-2 rounded text-primary border border-primary">
-                                <i class="bi bi-telephone-fill"></i> Contact: {{bid.bidder_details.phone}}
+                        <div ng-if="item.showBids" class="mt-4 bg-light p-3 rounded-3">
+                            <h6 class="fw-bold text-muted mb-3">Offers received</h6>
+                            <div ng-if="getBidsForProduct(item.id, 'sell').length == 0" class="text-center text-muted small py-2">No offers yet.</div>
+                            <div ng-repeat="bid in getBidsForProduct(item.id, 'sell')" class="d-flex justify-content-between align-items-center bg-white p-3 rounded mb-2 border">
+                                <div>
+                                    <span class="fw-bold">{{bid.bidder_details.name}}</span> offers <span class="text-success fw-bold">₹{{bid.amount}}</span>
+                                    <div ng-if="bid.status == 'ACCEPTED'" class="text-success small mt-1"><i class="bi bi-telephone"></i> {{bid.bidder_details.phone}}</div>
+                                </div>
+                                <div>
+                                    <div ng-if="bid.status == 'PENDING'">
+                                        <button class="btn btn-success btn-sm rounded-pill px-3" ng-click="updateBid(bid, 'ACCEPTED')">Accept</button>
+                                        <button class="btn btn-outline-danger btn-sm rounded-pill px-3" ng-click="updateBid(bid, 'REJECTED')">Decline</button>
+                                    </div>
+                                    <span ng-if="bid.status != 'PENDING'" class="badge" ng-class="{'bg-success': bid.status=='ACCEPTED', 'bg-danger': bid.status=='REJECTED'}">{{bid.status}}</span>
+                                </div>
                             </div>
                         </div>
-                        <div ng-if="bid.status == 'PENDING'">
-                            <button class="btn btn-sm btn-success rounded-pill" ng-click="updateBid(bid, 'ACCEPTED')">Accept</button>
-                            <button class="btn btn-sm btn-outline-danger rounded-pill" ng-click="updateBid(bid, 'REJECTED')">Reject</button>
-                        </div>
-                        <div ng-if="bid.status != 'PENDING'" class="badge" ng-class="{'bg-success': bid.status=='ACCEPTED', 'bg-danger': bid.status=='REJECTED'}">{{bid.status}}</div>
                     </div>
-                    <div ng-if="getBidsForProduct(item.id, 'buy').length == 0" class="text-muted small">No sellers yet.</div>
                 </div>
+                <div ng-if="myListings.length == 0" class="text-center text-muted py-5">No active sales listings.</div>
             </div>
-        </div>
 
-        <!-- TAB CONTENT: MY BIDS -->
-        <div ng-show="activeTab == 'bids'">
-            <h5 class="fw-bold mb-3">My Offers</h5>
-            <div class="row">
-                <div class="col-md-6" ng-repeat="bid in myBids">
-                    <div class="feature-box p-3 mb-3 h-100 position-relative">
-                        <div class="d-flex justify-content-between">
-                            <span class="fw-bold small text-muted">BID #{{bid.id}}</span>
-                            <span class="badge" ng-class="{'bg-warning text-dark': bid.status=='PENDING', 'bg-success': bid.status=='ACCEPTED', 'bg-danger': bid.status=='REJECTED'}">{{bid.status}}</span>
+            <!-- 2. MY REQUESTS -->
+            <div ng-show="activeTab == 'requests'">
+                <div class="text-end mb-3"><a href="product_buy.html" class="btn btn-primary-custom rounded-pill btn-sm"><i class="bi bi-plus-lg"></i> Post Request</a></div>
+                <div class="card mb-3 border-0 shadow-sm" ng-repeat="item in myBuyRequests">
+                    <div class="card-body p-4">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div class="d-flex align-items-center">
+                                <div class="bg-primary-subtle p-3 rounded-circle me-3 text-primary"><i class="bi bi-basket fs-4"></i></div>
+                                <div>
+                                    <h5 class="fw-bold mb-1"><a href="product_detail.html?id={{item.id}}&type=buy" class="text-dark text-decoration-none">{{item.productName || item.name}}</a></h5>
+                                    <div class="text-muted small">Target: ₹{{item.price}} • Need {{item.quantity}} Units</div>
+                                </div>
+                            </div>
+                            <div>
+                                <button class="btn btn-light btn-sm rounded-pill text-danger me-2" ng-click="deletePost(item.id, 'buy')"><i class="bi bi-trash"></i></button>
+                                <button class="btn btn-outline-custom btn-sm rounded-pill" ng-click="item.showBids = !item.showBids">View Sellers</button>
+                            </div>
                         </div>
-                        <h5 class="mt-2">
-                             <a ng-if="bid.sell_post" href="product_detail.html?id={{bid.sell_post}}&type=sell" class="text-dark text-decoration-none hover-link">View Post <i class="bi bi-box-arrow-up-right small"></i></a>
-                             <a ng-if="bid.buy_post" href="product_detail.html?id={{bid.buy_post}}&type=buy" class="text-dark text-decoration-none hover-link">View Post <i class="bi bi-box-arrow-up-right small"></i></a>
-                        </h5>
-                        <div class="mt-2">Offered: <span class="text-success fw-bold">₹{{bid.amount}}</span></div>
-                        <p class="small text-muted">For {{bid.quantity}} units</p>
+                        <div ng-if="item.showBids" class="mt-4 bg-light p-3 rounded-3">
+                            <div ng-if="getBidsForProduct(item.id, 'buy').length == 0" class="text-center text-muted small">No sellers yet.</div>
+                            <div ng-repeat="bid in getBidsForProduct(item.id, 'buy')" class="d-flex justify-content-between align-items-center bg-white p-3 rounded mb-2 border">
+                                <div><span class="fw-bold">{{bid.bidder_details.name}}</span> offers stock at <span class="text-success fw-bold">₹{{bid.amount}}</span></div>
+                                <span class="badge" ng-class="{'bg-success': bid.status=='ACCEPTED', 'bg-warning text-dark': bid.status=='PENDING'}">{{bid.status}}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div ng-if="myBuyRequests.length == 0" class="text-center text-muted py-5">No buy requests posted.</div>
+            </div>
+
+            <!-- 3. MY BIDS -->
+            <div ng-show="activeTab == 'bids'">
+                <div class="row g-4">
+                    <div class="col-md-6" ng-repeat="bid in myBids">
+                        <div class="card h-100 border-0 shadow-sm">
+                            <div class="card-body p-4">
+                                <div class="d-flex justify-content-between mb-3">
+                                    <span class="badge rounded-pill bg-light text-dark border">ID #{{bid.id}}</span>
+                                    <span class="badge rounded-pill" ng-class="{'bg-warning text-dark': bid.status=='PENDING', 'bg-success': bid.status=='ACCEPTED', 'bg-danger': bid.status=='REJECTED'}">{{bid.status}}</span>
+                                </div>
+                                <h5 class="fw-bold mb-3">
+                                     <a ng-if="bid.sell_post" href="product_detail.html?id={{bid.sell_post}}&type=sell" class="text-dark">View Listing <i class="bi bi-box-arrow-up-right"></i></a>
+                                     <a ng-if="bid.buy_post" href="product_detail.html?id={{bid.buy_post}}&type=buy" class="text-dark">View Listing <i class="bi bi-box-arrow-up-right"></i></a>
+                                </h5>
+                                <div class="p-3 bg-light rounded">
+                                    <div class="d-flex justify-content-between"><span class="text-muted">Your Offer:</span><span class="fw-bold text-success">₹{{bid.amount}}</span></div>
+                                </div>
+                                <div ng-if="bid.status == 'ACCEPTED'" class="mt-3 alert alert-success mb-0 p-2 text-center small">
+                                    <div class="fw-bold">Accepted!</div> Call: {{bid.post_owner_details.phone}}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div ng-if="myBids.length == 0" class="text-center text-muted py-5">You haven't made any offers yet.</div>
+            </div>
+
+            <!-- 4. ACCOUNT SETTINGS (NEW) -->
+            <div ng-show="activeTab == 'settings'">
+                <div class="row justify-content-center">
+                    <div class="col-lg-8">
+                        <h4 class="fw-bold mb-4 text-center">My Account Settings</h4>
                         
-                        <div ng-if="bid.status == 'ACCEPTED'" class="alert alert-success py-2 small fw-bold">
-                            <i class="bi bi-check-circle-fill"></i> Bid Accepted!<br>
-                            <div class="mt-1 text-dark fw-normal">
-                                Call Owner: <strong>{{bid.post_owner_details.phone}}</strong><br>
-                                Name: {{bid.post_owner_details.name}}
+                        <form ng-submit="updateAccount()">
+                            <!-- Photo Upload Section -->
+                            <div class="text-center mb-4">
+                                <div class="position-relative d-inline-block">
+                                    <img ng-src="{{ editData.newImage || getImageUrl(currentUser) || 'https://via.placeholder.com/150' }}" 
+                                         class="rounded-circle shadow-sm border" 
+                                         style="width: 120px; height: 120px; object-fit: cover;">
+                                    
+                                    <label for="fileUpload" class="position-absolute bottom-0 end-0 bg-dark text-white rounded-circle p-2 shadow" style="cursor: pointer;">
+                                        <i class="bi bi-camera-fill"></i>
+                                    </label>
+                                    <input type="file" id="fileUpload" class="d-none" fileread="editData.newImage" accept="image/*">
+                                </div>
+                                <div class="small text-muted mt-2">Click icon to change photo</div>
                             </div>
-                        </div>
+
+                            <!-- Details Form -->
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label class="form-label fw-bold small text-muted">Full Name</label>
+                                    <input type="text" class="form-control" ng-model="editData.name" required>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label fw-bold small text-muted">Phone Number</label>
+                                    <input type="text" class="form-control" ng-model="editData.phone" required>
+                                </div>
+                                <div class="col-12">
+                                    <label class="form-label fw-bold small text-muted">Email Address</label>
+                                    <input type="email" class="form-control bg-light" ng-model="editData.email" readonly disabled>
+                                    <div class="form-text text-end">Email cannot be changed</div>
+                                </div>
+                                <div class="col-12">
+                                    <label class="form-label fw-bold small text-muted">Address</label>
+                                    <textarea class="form-control" rows="3" ng-model="editData.address" required></textarea>
+                                </div>
+                            </div>
+
+                            <div class="mt-4 d-grid">
+                                <button type="submit" class="btn btn-primary-custom py-3 rounded-pill shadow-sm">
+                                    Save Changes
+                                </button>
+                            </div>
+                        </form>
                     </div>
                 </div>
             </div>
+
         </div>
     </div>
+    
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>

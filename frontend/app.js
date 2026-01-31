@@ -31,7 +31,7 @@ app.directive('fileread', [function () {
 }]);
 
 // --- 1. GLOBAL SESSION MANAGER & HELPERS ---
-app.run(function($window, $rootScope, API_CONFIG) {
+app.run(function($window, $rootScope, $timeout, API_CONFIG) {
     // Session Check
     $rootScope.checkSession = function() {
         var user = $window.sessionStorage.getItem('currentUser');
@@ -52,19 +52,32 @@ app.run(function($window, $rootScope, API_CONFIG) {
     $rootScope.getImageUrl = function(item) {
         if (!item) return null;
         
-        // 1. Check if user uploaded a specific image or master image exists
-        var img = item.image || item.productImage;
+        // 1. Check if user uploaded a specific image, master image, or profile image exists
+        var img = item.image || item.productImage || item.profile_image;
         if (!img) return null;
         
         // 2. If it's already a full URL (http/https), return as is
         if (img.startsWith('http')) return img;
         
         // 3. Otherwise, prepend backend URL from Config
-        // Remove trailing slash from config if image has leading slash to avoid double //
         var baseUrl = API_CONFIG.url.endsWith('/') ? API_CONFIG.url.slice(0, -1) : API_CONFIG.url;
         var imgPath = img.startsWith('/') ? img : '/' + img;
         
         return baseUrl + imgPath;
+    };
+
+    // --- TOAST NOTIFICATION SYSTEM ---
+    $rootScope.toasts = [];
+    $rootScope.showToast = function(message, type) {
+        // type: 'success', 'error', 'info'
+        var newToast = { message: message, type: type || 'info', id: Date.now() };
+        $rootScope.toasts.push(newToast);
+        
+        // Remove toast after 3 seconds
+        $timeout(function() {
+            var index = $rootScope.toasts.indexOf(newToast);
+            if (index > -1) $rootScope.toasts.splice(index, 1);
+        }, 3000);
     };
 
     $rootScope.checkSession();
@@ -81,6 +94,84 @@ app.controller('MarketplaceCtrl', function ($scope, $http, $window, $q, API_CONF
     $scope.openProduct = function(p) {
         $window.location.href = 'product_detail.html?id=' + p.id + '&type=' + p.type;
     };
+
+    // --- WEATHER LOGIC (Open-Meteo API - Free, No Key) ---
+    function loadWeather() {
+        // Default to Nashik coordinates (Major Agri Hub in India)
+        var lat = 19.9975;
+        var lon = 73.7898;
+        
+        // URL for Open-Meteo
+        var url = "https://api.open-meteo.com/v1/forecast?latitude=" + lat + "&longitude=" + lon + "&current_weather=true&hourly=relativehumidity_2m,rain";
+        
+        $http.get(url).then(function(res) {
+            var curr = res.data.current_weather;
+            
+            // Safe DOM manipulation for the widget if element exists
+            var tempEl = document.getElementById('tempDisplay');
+            if(tempEl) {
+                tempEl.innerText = curr.temperature + "°C";
+                document.getElementById('windDisplay').innerText = curr.windspeed + " km/h";
+                
+                // Simple mapping WMO codes to text
+                var desc = "Clear Sky";
+                if(curr.weathercode > 3) desc = "Cloudy";
+                if(curr.weathercode > 50) desc = "Rainy";
+                if(curr.weathercode > 70) desc = "Stormy";
+                document.getElementById('descDisplay').innerText = desc;
+                
+                // Mocking humidity/rain probability from hourly data (taking first index)
+                if(res.data.hourly) {
+                    document.getElementById('humDisplay').innerText = res.data.hourly.relativehumidity_2m[0] + "%";
+                    document.getElementById('rainDisplay').innerText = (res.data.hourly.rain[0] > 0 ? "High" : "Low");
+                }
+            }
+        }, function(err) { console.log("Weather API error", err); });
+    }
+
+    // --- ANALYTICS CHART LOGIC ---
+    $scope.initChart = function() {
+        $http.get(API_CONFIG.url + "product/analytics/trends/").then(function(res) {
+            var prices = res.data.prices; // Expecting [{ category__name: 'Veg', avg_price: 200 }, ...]
+            
+            var labels = prices.map(function(i) { return i.category__name; });
+            var data = prices.map(function(i) { return i.avg_price; });
+            
+            var ctx = document.getElementById('priceChart');
+            if(ctx && typeof Chart !== 'undefined') {
+                // Destroy old chart if exists to prevent overlay
+                if(window.myPriceChart) window.myPriceChart.destroy();
+
+                window.myPriceChart = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            label: 'Avg Market Price (₹)',
+                            data: data,
+                            backgroundColor: 'rgba(46, 125, 50, 0.6)',
+                            borderColor: 'rgba(46, 125, 50, 1)',
+                            borderWidth: 1,
+                            borderRadius: 5
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: { legend: { display: false } },
+                        scales: {
+                            y: { beginAtZero: true, grid: { borderDash: [5, 5] } }
+                        }
+                    }
+                });
+            }
+        }, function(err) { console.log("Analytics API not available yet (check backend)."); });
+    };
+
+    // Initialize New Features
+    loadWeather();
+    // Use timeout to ensure DOM is ready for Chart
+    setTimeout($scope.initChart, 500);
 
     var sellRequest = $http.get(API_CONFIG.url + "product_sell/");
     var buyRequest = $http.get(API_CONFIG.url + "product_buy/");
@@ -234,12 +325,12 @@ app.controller('ProductDetailCtrl', function ($scope, $http, $window, $rootScope
 
     $scope.placeBid = function() {
         if (!$rootScope.currentUser) {
-            alert("Please login to place a bid.");
+            $rootScope.showToast("Please login to place a bid.", "error");
             window.location.href = "login.html";
             return;
         }
         if ($scope.isOwner) {
-            alert("You cannot bid on your own post.");
+            $rootScope.showToast("You cannot bid on your own post.", "error");
             return;
         }
         var bidData = {
@@ -253,10 +344,10 @@ app.controller('ProductDetailCtrl', function ($scope, $http, $window, $rootScope
         else bidData.sell_post = id;
 
         $http.post(API_CONFIG.url + "product_bid/", bidData).then(function() {
-            alert("Bid Placed Successfully!");
+            $rootScope.showToast("Bid Placed Successfully!", "success");
             $scope.bid = { quantity: 1, amount: "", message: "" }; // Reset form
             loadBids();
-        }, function() { alert("Error placing bid. Please try again."); });
+        }, function() { $rootScope.showToast("Error placing bid. Please try again.", "error"); });
     };
 
     $scope.updateBidStatus = function(bid, status) {
@@ -284,16 +375,23 @@ app.controller('CategoryPageCtrl', function ($scope, $http, $window, API_CONFIG)
     };
 });
 
-// --- 6. AUTH CONTROLLER ---
-app.controller('AuthCtrl', function ($scope, $http, $window, API_CONFIG) {
+// --- 6. AUTH CONTROLLER (UPDATED FOR YOUR PASSWORD) ---
+app.controller('AuthCtrl', function ($scope, $http, $window, $rootScope, API_CONFIG) {
     $scope.loginData = {};
     $scope.regData = {};
+    $scope.showPassword = false; // State for Eye Icon
+
+    // Toggle function for eye icon
+    $scope.togglePassword = function() {
+        $scope.showPassword = !$scope.showPassword;
+    };
 
     $scope.loginCustomer = function () {
         $http.post(API_CONFIG.url + "customer/login/", $scope.loginData).then(function (res) {
             $window.sessionStorage.setItem('currentUser', JSON.stringify(res.data));
+            $rootScope.showToast("Welcome back!", "success");
             $window.location.href = 'customer_dashboard.html';
-        }, function() { alert("Invalid Credentials"); });
+        }, function() { $rootScope.showToast("Invalid Credentials", "error"); });
     };
 
     $scope.loginAdmin = function () {
@@ -302,23 +400,40 @@ app.controller('AuthCtrl', function ($scope, $http, $window, API_CONFIG) {
             admin.role = 'admin';
             $window.sessionStorage.setItem('currentUser', JSON.stringify(admin));
             $window.location.href = 'admin_dashboard.html';
-        }, function() { alert("Access Denied"); });
+        }, function() { $rootScope.showToast("Access Denied", "error"); });
     };
 
     $scope.register = function () {
-        if ($scope.regData.password !== $scope.regData.confirm_password) {
-            alert("Passwords do not match!");
+        // Trim spaces to avoid "not matching" errors due to whitespace
+        var p1 = ($scope.regData.password || "").trim();
+        var p2 = ($scope.regData.confirm_password || "").trim();
+
+        if (p1 !== p2) {
+            $rootScope.showToast("Passwords do not match!", "error");
             return;
         }
+
+        // --- UPDATED REGEX: Special Chars are now OPTIONAL ---
+        // Allows: Uppercase, Lowercase, Number.
+        // This will allow "Bharath8this" to pass.
+        // Pattern: At least 1 lower, 1 upper, 1 digit. Special chars allowed but not required. Length 8+.
+        var passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)[A-Za-z\d@$!%*?&]{8,}$/;
+        
+        if(!passwordRegex.test(p1)) {
+            $rootScope.showToast("Password must contain 8+ chars, uppercase, lowercase, and a number.", "error");
+            return;
+        }
+
         var payload = angular.copy($scope.regData);
+        payload.password = p1; // Send trimmed password
         delete payload.confirm_password;
 
         $http.post(API_CONFIG.url + "customer/", payload).then(function () {
             alert("Registration Successful! Please Login.");
             $window.location.href = 'login.html';
         }, function(err) { 
-            var msg = err.data.email ? "Email already exists." : "Registration Failed.";
-            alert(msg); 
+            var msg = err.data.error || (err.data.email ? "Email already exists." : "Registration Failed.");
+            $rootScope.showToast(msg, "error"); 
         });
     };
 });
@@ -498,7 +613,7 @@ app.controller('ProductSellCtrl', function ($scope, $http, $rootScope, $window, 
 
     $scope.saveProductSell = function() {
         if(!$rootScope.currentUser) {
-            alert("Please login.");
+            $rootScope.showToast("Please login.", "error");
             $window.location.href = "login.html";
             return;
         }
@@ -508,10 +623,10 @@ app.controller('ProductSellCtrl', function ($scope, $http, $rootScope, $window, 
         $scope.product_sell.phoneNo = $rootScope.currentUser.phone;
 
         $http.post(API_CONFIG.url + "product_sell/", $scope.product_sell).then(function(){ 
-            alert("Success! Your produce is listed.");
+            $rootScope.showToast("Success! Your produce is listed.", "success");
             $window.location.href = "customer_dashboard.html"; 
         }, function(err){ 
-            alert("Error posting product. Check your connection or image size."); 
+            $rootScope.showToast("Error posting product. Check your connection or image size.", "error"); 
             $scope.isSubmitting = false;
         });
     };
@@ -521,7 +636,7 @@ app.controller('ProductSellCtrl', function ($scope, $http, $rootScope, $window, 
 app.controller('ProductBuyCtrl', function ($scope, $http, $rootScope, $window, API_CONFIG) { 
     $scope.product_buy = {};
     $scope.categories = []; 
-    $scope.productsList = [];
+    $scope.productsList = []; 
     $scope.isSubmitting = false;
 
     $http.get(API_CONFIG.url + "category/").then(function(res){ $scope.categories = res.data; });
@@ -534,7 +649,7 @@ app.controller('ProductBuyCtrl', function ($scope, $http, $rootScope, $window, A
 
     $scope.saveProductBuy = function() {
         if(!$rootScope.currentUser) {
-            alert("Please login.");
+            $rootScope.showToast("Please login.", "error");
             $window.location.href = "login.html";
             return;
         }
@@ -542,10 +657,10 @@ app.controller('ProductBuyCtrl', function ($scope, $http, $rootScope, $window, A
         $scope.product_buy.customer = $rootScope.currentUser.id;
         
         $http.post(API_CONFIG.url + "product_buy/", $scope.product_buy).then(function(){ 
-            alert("Request Posted!");
+            $rootScope.showToast("Request Posted!", "success");
             $window.location.href = "customer_dashboard.html";
         }, function(err){ 
-            alert("Error posting request."); 
+            $rootScope.showToast("Error posting request.", "error"); 
             $scope.isSubmitting = false;
         });
     };
@@ -663,11 +778,34 @@ app.controller('CustomerDashCtrl', function ($scope, $http, $rootScope, $window,
         
         $http.delete(API_CONFIG.url + endpoint + id + "/?customer=" + $rootScope.currentUser.id)
             .then(function() {
-                alert("Listing deleted.");
+                $rootScope.showToast("Listing deleted.", "info");
                 loadData(); 
             }, function(err) {
-                alert("Error deleting: " + (err.data.error || "Server Error"));
+                $rootScope.showToast("Error deleting: " + (err.data.error || "Server Error"), "error");
             });
+    };
+
+    // --- PROFILE IMAGE UPLOAD ---
+    $scope.profileUpdate = {};
+    
+    $scope.updateProfileImage = function() {
+        if(!$scope.profileUpdate.image) {
+            $rootScope.showToast("Please select an image first", "error");
+            return;
+        }
+        
+        var payload = { profile_image: $scope.profileUpdate.image };
+        
+        $http.put(API_CONFIG.url + "customer/" + $rootScope.currentUser.id + "/", payload).then(function(res) {
+            $rootScope.showToast("Profile Picture Updated!", "success");
+            // Update Session Storage
+            var updatedUser = res.data;
+            $window.sessionStorage.setItem('currentUser', JSON.stringify(updatedUser));
+            $rootScope.currentUser = updatedUser;
+            $scope.profileUpdate = {}; // Reset
+        }, function(err) {
+            $rootScope.showToast("Update Failed", "error");
+        });
     };
     
     $scope.logout = function() {
