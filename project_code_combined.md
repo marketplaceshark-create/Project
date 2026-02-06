@@ -3925,17 +3925,6 @@ class Product(models.Model):
 
 ---
 
-## File: backend/product/tests.py
-```python
-# Path: backend/product/tests.py
-from django.test import TestCase
-
-# Create your tests here.
-
-```
-
----
-
 ## File: backend/agrivendia/asgi.py
 ```python
 # Path: backend/agrivendia/asgi.py
@@ -4544,17 +4533,6 @@ class PasswordResetToken(models.Model):
 
 ---
 
-## File: backend/customer/tests.py
-```python
-# Path: backend/customer/tests.py
-from django.test import TestCase
-
-# Create your tests here.
-
-```
-
----
-
 ## File: backend/category/serializer.py
 ```python
 # Path: backend/category/serializer.py
@@ -4702,17 +4680,6 @@ class Category(models.Model):
         
         return self.name
 
-
-```
-
----
-
-## File: backend/category/tests.py
-```python
-# Path: backend/category/tests.py
-from django.test import TestCase
-
-# Create your tests here.
 
 ```
 
@@ -5058,17 +5025,6 @@ class User(models.Model):
 
 ---
 
-## File: backend/user/tests.py
-```python
-# Path: backend/user/tests.py
-from django.test import TestCase
-
-# Create your tests here.
-
-```
-
----
-
 ## File: backend/product_bid/serializer.py
 ```python
 # Path: backend/product_bid/serializer.py
@@ -5343,17 +5299,6 @@ class ProductBid(models.Model):
 
 ---
 
-## File: backend/product_bid/tests.py
-```python
-# Path: backend/product_bid/tests.py
-from django.test import TestCase
-
-# Create your tests here.
-
-```
-
----
-
 ## File: backend/product_buy/serializer.py
 ```python
 # Path: backend/product_buy/serializer.py
@@ -5588,17 +5533,6 @@ class ProductBuy(models.Model):
 
 ---
 
-## File: backend/product_buy/tests.py
-```python
-# Path: backend/product_buy/tests.py
-from django.test import TestCase
-
-# Create your tests here.
-
-```
-
----
-
 ## File: backend/plan/serializer.py
 ```python
 # Path: backend/plan/serializer.py
@@ -5748,17 +5682,6 @@ class Plan(models.Model):
         return self.name
 
 
-
-```
-
----
-
-## File: backend/plan/tests.py
-```python
-# Path: backend/plan/tests.py
-from django.test import TestCase
-
-# Create your tests here.
 
 ```
 
@@ -6038,17 +5961,6 @@ class ProductSell(models.Model):
 
     def __str__(self):
         return f"{self.name} - {self.customer.name}"
-```
-
----
-
-## File: backend/product_sell/tests.py
-```python
-# Path: backend/product_sell/tests.py
-from django.test import TestCase
-
-# Create your tests here.
-
 ```
 
 ---
