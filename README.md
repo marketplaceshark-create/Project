@@ -12,3 +12,4 @@ once quantity becomes 0 it should grade out that picture and show status as sold
 3.  **Rejected:** Owner rejects. Bidder can submit a revised price/quantity.
 4.  **Invalid:** Post quantity is insufficient for this bid.n(if wuntiyy get completed)
 5.  **Cancelled:** Withdrawn by the bidder.(if a customer want to bid for a product and he got better pricing for another product so want to delete that bid so this cancelled option is used)
+ new change
