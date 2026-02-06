@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en" ng-app="userApp">
+<head>
+    <meta charset="UTF-8">
+    <title>My Profile - Agrivendia</title>
+    <!-- CSS Dependencies -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="css/styles.css" rel="stylesheet">
+    
+    <!-- JS Dependencies -->
+    <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.8.2/angular.min.js"></script>
+    <script src="app.js"></script>
+</head>
+<body ng-controller="ProfileCtrl" class="bg-light">
+
+    <!-- Toast Notifications -->
+    <div id="toast-container">
+        <div class="custom-toast" ng-repeat="t in toasts" ng-class="t.type">
+            <div class="toast-icon">
+                <i class="bi" ng-class="{'bi-check-circle-fill': t.type=='success', 'bi-x-circle-fill': t.type=='error'}"></i>
+            </div>
+            <div class="fw-bold">{{t.message}}</div>
+        </div>
+    </div>
+
+    <!-- Navbar -->
+    <div ng-include="'components/navbar.html'"></div>
+
+    <div class="container py-5">
+        <div class="row justify-content-center">
+            <div class="col-lg-8">
+                <div class="card border-0 shadow-sm rounded-4 overflow-hidden">
+                    <div class="card-header bg-white border-0 p-4 pb-0">
+                        <h4 class="fw-bold text-success mb-0">Edit Profile</h4>
+                        <p class="text-muted small">Update your personal details.</p>
+                    </div>
+                    <div class="card-body p-5">
+                        <form ng-submit="updateProfile()">
+                            
+                            <!-- Profile Picture Upload (Base64) -->
+                            <div class="text-center mb-5">
+                                <div class="position-relative d-inline-block">
+                                    <!-- Displays New Image if selected, otherwise Current Image, otherwise Placeholder -->
+                                    <img ng-src="{{ profile.newImage || getImageUrl(profile) || 'https://via.placeholder.com/150' }}" 
+                                         class="rounded-circle shadow-sm border border-3" 
+                                         style="width: 140px; height: 140px; object-fit: cover;">
+                                    
+                                    <!-- Camera Icon Button -->
+                                    <label for="fileUpload" class="position-absolute bottom-0 end-0 bg-dark text-white rounded-circle p-2 shadow" style="cursor: pointer;">
+                                        <i class="bi bi-camera-fill"></i>
+                                    </label>
+                                    
+                                    <!-- Hidden Input for File Reader -->
+                                    <input type="file" id="fileUpload" class="d-none" fileread="profile.newImage" accept="image/*">
+                                </div>
+                                <div class="small text-muted mt-2">Allowed: JPG, PNG (Max 2MB)</div>
+                            </div>
+
+                            <div class="row g-4">
+                                <div class="col-md-6">
+                                    <label class="form-label fw-bold small text-muted text-uppercase">Full Name</label>
+                                    <input type="text" class="form-control" ng-model="profile.name" required>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label fw-bold small text-muted text-uppercase">Phone Number</label>
+                                    <input type="text" class="form-control" ng-model="profile.phone" required>
+                                </div>
+                                <div class="col-12">
+                                    <label class="form-label fw-bold small text-muted text-uppercase">Email Address</label>
+                                    <!-- Readonly because changing email breaks login usually -->
+                                    <input type="email" class="form-control bg-light text-muted" ng-model="profile.email" readonly disabled>
+                                    <div class="form-text text-end"><i class="bi bi-lock-fill"></i> Email cannot be changed</div>
+                                </div>
+                                <div class="col-12">
+                                    <label class="form-label fw-bold small text-muted text-uppercase">Address</label>
+                                    <textarea class="form-control" rows="3" ng-model="profile.address" required></textarea>
+                                </div>
+                            </div>
+
+                            <div class="mt-5 d-flex justify-content-between align-items-center">
+                                <a href="customer_dashboard.html" class="text-muted text-decoration-none">Cancel</a>
+                                <button type="submit" class="btn btn-primary-custom px-5 py-2 rounded-pill shadow-sm">
+                                    Save Changes
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div ng-include="'components/footer.html'"></div>
+    
+    <!-- Bootstrap Bundle JS (Required for Navbar Dropdowns) -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

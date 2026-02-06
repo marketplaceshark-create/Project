@@ -1,3 +1,5 @@
+
+
 <!DOCTYPE html>
 <html lang="en" ng-app="userApp">
 <head>
@@ -5,7 +7,6 @@
     <title>Post Sale - Agrivendia</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
     <link href="css/styles.css" rel="stylesheet">
     <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.8.2/angular.min.js"></script>
     <script src="app.js"></script>
@@ -40,10 +41,37 @@
                     <label class="small fw-bold text-muted">Photo</label>
                     <input type="file" class="form-control" fileread="product_sell.image" accept="image/*">
                 </div>
+                
+                <!-- ✅ EXPANDED UNIT SELECTION -->
                 <div class="row g-3 mb-3">
-                    <div class="col-6"><label class="small fw-bold text-muted">Price (₹)</label><input type="number" class="form-control" ng-model="product_sell.price" required></div>
-                    <div class="col-6"><label class="small fw-bold text-muted">Qty</label><input type="number" class="form-control" ng-model="product_sell.quantity" required></div>
+                    <div class="col-md-4">
+                        <label class="small fw-bold text-muted">Unit</label>
+                        <select class="form-select" ng-model="product_sell.unit" required>
+                            <option value="kg">Kg (Kilograms)</option>
+                            <option value="ton">Ton (Metric Ton)</option>
+                            <option value="quintal">Quintal (100kg)</option>
+                            <option value="g">Grams</option>
+                            <option value="l">Litres</option>
+                            <option value="ml">Millilitres</option>
+                            <option value="box">Box</option>
+                            <option value="crate">Crate</option>
+                            <option value="dozen">Dozen</option>
+                            <option value="piece">Piece</option>
+                            <option value="bag">Bag/Sack</option>
+                            <option value="barrel">Barrel</option>
+                            <option value="bunch">Bunch</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                         <label class="small fw-bold text-muted">Price / Unit (₹)</label>
+                         <input type="number" class="form-control" ng-model="product_sell.price" min="1" required>
+                    </div>
+                    <div class="col-md-4">
+                         <label class="small fw-bold text-muted">Quantity</label>
+                         <input type="number" class="form-control" ng-model="product_sell.quantity" min="1" required>
+                    </div>
                 </div>
+
                 <div class="mb-3"><label class="small fw-bold text-muted">Location</label><input type="text" class="form-control" ng-model="product_sell.location" required></div>
                 <div class="mb-4"><label class="small fw-bold text-muted">Description</label><textarea class="form-control" rows="3" ng-model="product_sell.description"></textarea></div>
                 

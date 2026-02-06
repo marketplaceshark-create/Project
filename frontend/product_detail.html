@@ -27,14 +27,15 @@
                     
                     <div class="d-flex align-items-center mb-4">
                         <h2 class="text-success fw-bold m-0 me-3">₹ {{product.price}}</h2>
-                        <span class="text-muted">/ Unit</span>
+                        <!-- UNIT DISPLAY -->
+                        <span class="text-muted fs-5">/ {{product.unit || 'kg'}}</span>
                     </div>
 
                     <div class="row g-3 mb-4">
                         <div class="col-6">
                             <div class="p-3 bg-light rounded-3 text-center">
                                 <div class="small text-muted fw-bold">QUANTITY</div>
-                                <div class="h5 fw-bold m-0">{{product.quantity}}</div>
+                                <div class="h5 fw-bold m-0">{{product.quantity}} {{product.unit || 'kg'}}</div>
                             </div>
                         </div>
                         <div class="col-6">
@@ -68,18 +69,18 @@
 
         <!-- BIDS SECTION -->
         <div class="row g-4">
-            <!-- BID FORM (If not owner) -->
+            <!-- BID FORM -->
             <div class="col-md-5" ng-if="!isOwner">
                 <div class="bg-white p-4 rounded-4 shadow-sm h-100">
                     <h4 class="fw-bold mb-3">Place an Offer</h4>
                     <form ng-submit="placeBid()">
                         <div class="form-floating mb-3">
                             <input type="number" class="form-control" id="qtyInput" ng-model="bid.quantity" placeholder="Quantity" required>
-                            <label for="qtyInput">Quantity Needed</label>
+                            <label for="qtyInput">Quantity Needed ({{product.unit || 'kg'}})</label>
                         </div>
                         <div class="form-floating mb-3">
                             <input type="number" class="form-control" id="priceInput" ng-model="bid.amount" placeholder="Price" required>
-                            <label for="priceInput">Your Price (₹)</label>
+                            <label for="priceInput">Your Price per {{product.unit || 'kg'}} (₹)</label>
                         </div>
                         <div class="form-floating mb-3">
                             <textarea class="form-control" id="msgInput" style="height: 100px" ng-model="bid.message" placeholder="Message"></textarea>
@@ -106,7 +107,7 @@
                                 <div>
                                     <div class="fw-bold">{{b.bidder_details.name}}</div>
                                     <div class="small text-muted">
-                                        Wants <strong class="text-dark">{{b.quantity}}</strong> units at <strong class="text-success fs-5">₹{{b.amount}}</strong>
+                                        Wants <strong class="text-dark">{{b.quantity}} {{product.unit || 'kg'}}</strong> at <strong class="text-success fs-5">₹{{b.amount}}</strong>
                                     </div>
                                     <div class="mt-2 small bg-white p-2 rounded text-secondary border" ng-if="b.message">
                                         <i class="bi bi-chat-quote me-1"></i> {{b.message}}

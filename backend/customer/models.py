@@ -9,6 +9,8 @@ class Customer(models.Model):
     password = models.CharField(max_length=100)
     # NEW FIELD
     profile_image = models.ImageField(upload_to='profile_pics/', blank=True, null=True)
+    # NEW: Track Plan Level (1=Free, 2=Grower, 3=Trader, 4=Enterprise)
+    plan_tier = models.IntegerField(default=1) 
     
     created_at = models.DateTimeField(auto_now_add=True)
 

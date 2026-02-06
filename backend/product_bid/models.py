@@ -8,6 +8,7 @@ class ProductBid(models.Model):
         ('PENDING', 'Pending'),
         ('ACCEPTED', 'Accepted'),
         ('REJECTED', 'Rejected'),
+        ('INVALID', 'Invalid'), 
     )
 
     # Who is bidding?

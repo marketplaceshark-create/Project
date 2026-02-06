@@ -1,3 +1,4 @@
+
 // Path: frontend/app.js
 var app = angular.module('userApp', []);
 
@@ -83,10 +84,11 @@ app.run(function($window, $rootScope, $timeout, API_CONFIG) {
     $rootScope.checkSession();
 });
 
-// --- 2. MARKETPLACE CONTROLLER (HOME) ---
+// --- 2. MARKETPLACE CONTROLLER (HOME PAGE) ---
 app.controller('MarketplaceCtrl', function ($scope, $http, $window, $q, API_CONFIG) {
     $scope.searchText = ""; 
-    
+    $scope.homeSections = []; // Dynamic Sections
+
     $scope.goToMarket = function() {
         $window.location.href = 'market.html?q=' + encodeURIComponent($scope.searchText);
     };
@@ -95,138 +97,94 @@ app.controller('MarketplaceCtrl', function ($scope, $http, $window, $q, API_CONF
         $window.location.href = 'product_detail.html?id=' + p.id + '&type=' + p.type;
     };
 
-    // --- WEATHER LOGIC (Open-Meteo API - Free, No Key) ---
-    function loadWeather() {
-        // Default to Nashik coordinates (Major Agri Hub in India)
-        var lat = 19.9975;
-        var lon = 73.7898;
-        
-        // URL for Open-Meteo
-        var url = "https://api.open-meteo.com/v1/forecast?latitude=" + lat + "&longitude=" + lon + "&current_weather=true&hourly=relativehumidity_2m,rain";
-        
-        $http.get(url).then(function(res) {
-            var curr = res.data.current_weather;
-            
-            // Safe DOM manipulation for the widget if element exists
-            var tempEl = document.getElementById('tempDisplay');
-            if(tempEl) {
-                tempEl.innerText = curr.temperature + "°C";
-                document.getElementById('windDisplay').innerText = curr.windspeed + " km/h";
-                
-                // Simple mapping WMO codes to text
-                var desc = "Clear Sky";
-                if(curr.weathercode > 3) desc = "Cloudy";
-                if(curr.weathercode > 50) desc = "Rainy";
-                if(curr.weathercode > 70) desc = "Stormy";
-                document.getElementById('descDisplay').innerText = desc;
-                
-                // Mocking humidity/rain probability from hourly data (taking first index)
-                if(res.data.hourly) {
-                    document.getElementById('humDisplay').innerText = res.data.hourly.relativehumidity_2m[0] + "%";
-                    document.getElementById('rainDisplay').innerText = (res.data.hourly.rain[0] > 0 ? "High" : "Low");
-                }
-            }
-        }, function(err) { console.log("Weather API error", err); });
-    }
+    // ... (Keep loadWeather and initChart functions as they are) ...
 
-    // --- ANALYTICS CHART LOGIC ---
-    $scope.initChart = function() {
-        $http.get(API_CONFIG.url + "product/analytics/trends/").then(function(res) {
-            var prices = res.data.prices; // Expecting [{ category__name: 'Veg', avg_price: 200 }, ...]
-            
-            var labels = prices.map(function(i) { return i.category__name; });
-            var data = prices.map(function(i) { return i.avg_price; });
-            
-            var ctx = document.getElementById('priceChart');
-            if(ctx && typeof Chart !== 'undefined') {
-                // Destroy old chart if exists to prevent overlay
-                if(window.myPriceChart) window.myPriceChart.destroy();
-
-                window.myPriceChart = new Chart(ctx, {
-                    type: 'bar',
-                    data: {
-                        labels: labels,
-                        datasets: [{
-                            label: 'Avg Market Price (₹)',
-                            data: data,
-                            backgroundColor: 'rgba(46, 125, 50, 0.6)',
-                            borderColor: 'rgba(46, 125, 50, 1)',
-                            borderWidth: 1,
-                            borderRadius: 5
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        plugins: { legend: { display: false } },
-                        scales: {
-                            y: { beginAtZero: true, grid: { borderDash: [5, 5] } }
-                        }
-                    }
-                });
-            }
-        }, function(err) { console.log("Analytics API not available yet (check backend)."); });
-    };
-
-    // Initialize New Features
-    loadWeather();
-    // Use timeout to ensure DOM is ready for Chart
-    setTimeout($scope.initChart, 500);
-
+    // FETCH DATA DYNAMICALLY
+    var catRequest = $http.get(API_CONFIG.url + "category/");
     var sellRequest = $http.get(API_CONFIG.url + "product_sell/");
     var buyRequest = $http.get(API_CONFIG.url + "product_buy/");
 
-    $q.all([sellRequest, buyRequest]).then(function (results) {
-        var sales = results[0].data.map(function(item) { item.type = 'sell'; return item; });
-        var buys = results[1].data.map(function(item) { 
+    $q.all([catRequest, sellRequest, buyRequest]).then(function (results) {
+        var categories = results[0].data;
+        var sales = results[1].data.map(function(item) { item.type = 'sell'; return item; });
+        var buys = results[2].data.map(function(item) { 
             item.type = 'buy';
-            // FIX: If name is 'General', prefer the productName (e.g. Red Onion)
             var label = (item.name === 'General' && item.productName) ? item.productName : (item.name || item.productName || "General Item");
             item.productName = "Wanted: " + label;
             return item;
         });
 
         var allItems = sales.concat(buys);
-        organizeProductsForHome(allItems);
+        organizeProductsForHome(categories, allItems);
     });
 
-    function organizeProductsForHome(products) {
-        var sections = [
-            { id: 'veg', title: 'Fresh Vegetables', keywords: ['onion', 'potato', 'tomato', 'veg', 'carrot'], items: [] },
-            { id: 'fruit', title: 'Organic Fruits', keywords: ['apple', 'mango', 'banana', 'fruit', 'grape'], items: [] },
-            { id: 'grain', title: 'Grains & Pulses', keywords: ['rice', 'wheat', 'corn', 'maize', 'dal'], items: [] }
-        ];
-
-        products.forEach(function(p) {
-            // Search in both Master Name and User Defined Name
-            var name = (p.productName || "").toLowerCase() + " " + (p.name || "").toLowerCase();
-            for (var i = 0; i < sections.length; i++) {
-                if (sections[i].keywords.some(function(k) { return name.includes(k); })) {
-                    sections[i].items.push(p);
-                    break;
-                }
-            }
+    function organizeProductsForHome(categories, products) {
+        // Create a section for EVERY category from the database
+        $scope.homeSections = categories.map(function(cat) {
+            return {
+                id: cat.id,
+                title: cat.name,
+                items: products.filter(function(p) {
+                    // Match Product Category ID to Current Category ID
+                    return p.category == cat.id; 
+                })
+            };
         });
-        $scope.homeSections = sections;
+
+        // Filter out empty sections so the homepage looks clean
+        $scope.homeSections = $scope.homeSections.filter(function(sec) {
+            return sec.items.length > 0;
+        });
     }
 });
 
-// --- 3. MARKET CONTROLLER (SEARCH PAGE) ---
+// --- 3. MARKET CONTROLLER (SEARCH & FILTERS) ---
 app.controller('MarketCtrl', function ($scope, $http, $q, $window, API_CONFIG) {
-    // 1. Initial State: 'sell' is selected by default
-    $scope.filters = { type: 'sell', search: '', location: '' };
+    // Filters with Min/Max Price, Category, Product
+    $scope.filters = { 
+        type: 'sell', 
+        search: '', 
+        location: '', 
+        minPrice: null, 
+        maxPrice: null,
+        categoryId: null,
+        productId: null
+    };
+
     $scope.locations = []; 
     $scope.allItems = [];
     $scope.filteredItems = [];
+    $scope.categories = [];
+    $scope.masterProducts = [];
 
+    // 1. Fetch Categories
+    $http.get(API_CONFIG.url + "category/").then(function(res){ 
+        $scope.categories = res.data; 
+    });
+
+    // 2. Fetch Master Products (For Product Filter)
+    $http.get(API_CONFIG.url + "product/").then(function(res){ 
+        $scope.masterProducts = res.data; 
+    });
+
+    // 3. Handle URL Params
     var urlParams = new URLSearchParams(window.location.search);
     var categoryId = urlParams.get('category_id'); 
     var searchQuery = urlParams.get('q'); 
+    var categoryName = urlParams.get('cat');
+
     if(searchQuery) $scope.filters.search = searchQuery;
-    
+    // Map Category Name to ID if passed via URL
+    if(categoryName) {
+        $scope.filters.search = categoryName; 
+        // Note: Ideally we map name->id here if we want strict category filtering
+    }
+    if(categoryId) $scope.filters.categoryId = parseInt(categoryId);
+
     var config = {};
     if (categoryId) config.params = { category_id: categoryId };
 
+    // 4. Fetch All Items
     var sellReq = $http.get(API_CONFIG.url + "product_sell/", config);
     var buyReq = $http.get(API_CONFIG.url + "product_buy/", config);
 
@@ -234,56 +192,66 @@ app.controller('MarketCtrl', function ($scope, $http, $q, $window, API_CONFIG) {
         var sales = results[0].data.map(function(i) { i.type = 'sell'; i.trusted = true; return i; });
         var buys = results[1].data.map(function(i) { 
             i.type = 'buy'; 
-            
-            // --- FIX FOR "GENERAL" NAME ISSUE ---
-            // If master product exists (e.g. Red Onion), prefer that over "General".
             var displayLabel = (i.name === 'General' && i.productName) ? i.productName : (i.name || i.productName || "General");
-            
-            // Format the string for display
             i.productName = "Wanted: " + displayLabel;
-            
-            // Important: Set name to null if it's 'General' so the HTML {{item.name || item.productName}} 
-            // fallback mechanism picks up our new fancy productName string.
             if(i.name === 'General') i.name = null;
-
             return i; 
         });
 
         $scope.allItems = sales.concat(buys);
         
-        // Populate Location Filter
+        // Populate Location Datalist
         var lSet = new Set();
         $scope.allItems.forEach(function(item) {
             if(item.location) lSet.add(item.location.trim());
         });
         $scope.locations = Array.from(lSet).sort();
 
-        // FIX: Apply filters immediately so the list respects 'sell' selection on load
         $scope.applyFilters();
     });
 
     $scope.resetFilters = function() {
-        $window.location.href = "market.html";
+        $scope.filters = { 
+            type: 'sell', 
+            search: '', 
+            location: '', 
+            minPrice: null, 
+            maxPrice: null,
+            categoryId: null,
+            productId: null
+        };
+        $scope.applyFilters();
     };
 
     $scope.applyFilters = function() {
         var f = $scope.filters;
-        var term = f.search.toLowerCase();
+        var term = (f.search || "").toLowerCase();
 
         $scope.filteredItems = $scope.allItems.filter(function(item) {
-            // Filter by Type
+            // 1. Listing Type
             if (f.type !== 'all' && f.type && item.type !== f.type) return false;
             
-            // Filter by Search (Master Name, User Name, Location)
+            // 2. Category Filter
+            if (f.categoryId && item.category != f.categoryId) return false;
+
+            // 3. Product Filter
+            // Note: Buy requests might check against 'product' ID if linked, 
+            // otherwise text search handles general requests.
+            if (f.productId && item.product != f.productId) return false;
+
+            // 4. Text Search (Name or Location)
             var nameStr = (item.productName || "") + " " + (item.name || "");
-            
             var textMatch = (nameStr.toLowerCase().includes(term)) || 
                             (item.location && item.location.toLowerCase().includes(term));
-            
             if (!textMatch) return false;
             
-            // Filter by Location
-            if (f.location && item.location !== f.location) return false;
+            // 5. Location Filter (Exact or Partial)
+            if (f.location && !item.location.toLowerCase().includes(f.location.toLowerCase())) return false;
+
+            // 6. Price Range
+            if (f.minPrice !== null && f.minPrice !== "" && item.price < f.minPrice) return false;
+            if (f.maxPrice !== null && f.maxPrice !== "" && item.price > f.maxPrice) return false;
+
             return true;
         });
     };
@@ -309,6 +277,9 @@ app.controller('ProductDetailCtrl', function ($scope, $http, $window, $rootScope
         $http.get(API_CONFIG.url + endpoint + id + "/").then(function (res) {
             $scope.product = res.data;
             $scope.product.type = type;
+            // Default unit
+            if(!$scope.product.unit) $scope.product.unit = 'kg';
+
             if ($rootScope.currentUser && $scope.product.customer == $rootScope.currentUser.id) {
                 $scope.isOwner = true;
             }
@@ -326,13 +297,19 @@ app.controller('ProductDetailCtrl', function ($scope, $http, $window, $rootScope
     $scope.placeBid = function() {
         if (!$rootScope.currentUser) {
             $rootScope.showToast("Please login to place a bid.", "error");
-            window.location.href = "login.html";
             return;
         }
         if ($scope.isOwner) {
             $rootScope.showToast("You cannot bid on your own post.", "error");
             return;
         }
+        
+        // Frontend Check for Quantity
+        if($scope.bid.quantity > $scope.product.quantity) {
+             $rootScope.showToast("Bid quantity cannot exceed available stock (" + $scope.product.quantity + ")", "error");
+             return;
+        }
+
         var bidData = {
             bidder: $rootScope.currentUser.id,
             amount: $scope.bid.amount,
@@ -345,9 +322,12 @@ app.controller('ProductDetailCtrl', function ($scope, $http, $window, $rootScope
 
         $http.post(API_CONFIG.url + "product_bid/", bidData).then(function() {
             $rootScope.showToast("Bid Placed Successfully!", "success");
-            $scope.bid = { quantity: 1, amount: "", message: "" }; // Reset form
+            $scope.bid = { quantity: 1, amount: "", message: "" };
             loadBids();
-        }, function() { $rootScope.showToast("Error placing bid. Please try again.", "error"); });
+        }, function(err) { 
+            var msg = err.data.error || "Error placing bid.";
+            $rootScope.showToast(msg, "error"); 
+        });
     };
 
     $scope.updateBidStatus = function(bid, status) {
@@ -357,31 +337,73 @@ app.controller('ProductDetailCtrl', function ($scope, $http, $window, $rootScope
     };
 });
 
-// --- 5. CATEGORY PAGE ---
-app.controller('CategoryPageCtrl', function ($scope, $http, $window, API_CONFIG) {
+// Path: frontend/app.js (inside your main app.js file)
+
+// ... (Keep the code before this as is)
+
+// --- 5. CATEGORY PAGE CONTROLLER (UPDATED) ---
+app.controller('CategoryPageCtrl', function($scope, $http, $window, $q, API_CONFIG) {
     $scope.categories = [];
-    $http.get(API_CONFIG.url + "category/").then(function (res) {
-        $scope.categories = res.data;
+    $scope.searchQuery = "";
+
+    // 1. Fetch Categories AND Master Products from Backend
+    // This fetches the full list: Vegetables, Fruits, Grains, Spices, Commercial, Others, etc.
+    var catReq = $http.get(API_CONFIG.url + "category/");
+    var prodReq = $http.get(API_CONFIG.url + "product/"); // To populate search tags
+
+    $q.all([catReq, prodReq]).then(function(results) {
+        $scope.categories = results[0].data;
+        var masterProducts = results[1].data;
+
+        // Map sample products to categories for the search feature
+        $scope.categories.forEach(function(cat) {
+            cat.productList = masterProducts
+                .filter(function(p) { return p.category == cat.id; })
+                .map(function(p) { return p.productName; });
+        });
     });
+
+    // 2. Dynamic Filter Function
+    $scope.categoryFilter = function(cat) {
+        if (!$scope.searchQuery) return true;
+        var query = $scope.searchQuery.toLowerCase();
+        
+        var nameMatch = cat.name.toLowerCase().indexOf(query) !== -1;
+        var productMatch = false;
+        
+        if (cat.productList && cat.productList.length > 0) {
+            productMatch = cat.productList.some(function(product) {
+                return product.toLowerCase().indexOf(query) !== -1;
+            });
+        }
+        return nameMatch || productMatch;
+    };
+
+    // 3. Updated Icons to include New Categories
     $scope.getCategoryIcon = function(name) {
         var n = (name || "").toLowerCase();
-        if (n.includes("veg")) return "bi-flower3";
-        if (n.includes("fruit")) return "bi-apple";
-        if (n.includes("grain")) return "bi-cloud-haze2"; 
-        return "bi-box-seam";
+        if(n.includes('veg')) return 'bi-carrot';
+        if(n.includes('fruit')) return 'bi-apple';
+        if(n.includes('grain')) return 'bi-flower1';
+        if(n.includes('dairy')) return 'bi-droplet';
+        if(n.includes('spice')) return 'bi-stars';       // Spices
+        if(n.includes('commercial')) return 'bi-briefcase'; // Commercial
+        if(n.includes('other')) return 'bi-grid';        // Others
+        return 'bi-box-seam'; // Default
     };
+
     $scope.goToMarket = function(cat) {
-        $window.location.href = 'market.html?category_id=' + cat.id;
+        // Pass Category ID for better filtering
+        $window.location.href = 'market.html?category_id=' + cat.id + '&cat=' + cat.name;
     };
 });
-
-// --- 6. AUTH CONTROLLER (UPDATED FOR YOUR PASSWORD) ---
+// ... (Keep the rest of app.js)
+// --- 6. AUTH CONTROLLER ---
 app.controller('AuthCtrl', function ($scope, $http, $window, $rootScope, API_CONFIG) {
     $scope.loginData = {};
     $scope.regData = {};
-    $scope.showPassword = false; // State for Eye Icon
+    $scope.showPassword = false; 
 
-    // Toggle function for eye icon
     $scope.togglePassword = function() {
         $scope.showPassword = !$scope.showPassword;
     };
@@ -404,7 +426,6 @@ app.controller('AuthCtrl', function ($scope, $http, $window, $rootScope, API_CON
     };
 
     $scope.register = function () {
-        // Trim spaces to avoid "not matching" errors due to whitespace
         var p1 = ($scope.regData.password || "").trim();
         var p2 = ($scope.regData.confirm_password || "").trim();
 
@@ -413,19 +434,14 @@ app.controller('AuthCtrl', function ($scope, $http, $window, $rootScope, API_CON
             return;
         }
 
-        // --- UPDATED REGEX: Special Chars are now OPTIONAL ---
-        // Allows: Uppercase, Lowercase, Number.
-        // This will allow "Bharath8this" to pass.
-        // Pattern: At least 1 lower, 1 upper, 1 digit. Special chars allowed but not required. Length 8+.
         var passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)[A-Za-z\d@$!%*?&]{8,}$/;
-        
         if(!passwordRegex.test(p1)) {
             $rootScope.showToast("Password must contain 8+ chars, uppercase, lowercase, and a number.", "error");
             return;
         }
 
         var payload = angular.copy($scope.regData);
-        payload.password = p1; // Send trimmed password
+        payload.password = p1; 
         delete payload.confirm_password;
 
         $http.post(API_CONFIG.url + "customer/", payload).then(function () {
@@ -438,10 +454,48 @@ app.controller('AuthCtrl', function ($scope, $http, $window, $rootScope, API_CON
     };
 });
 
+// ... existing code ...
+
 // --- 7. PLAN CONTROLLER ---
-app.controller('PlanCtrl', function ($scope, $http, API_CONFIG) {
-    $http.get(API_CONFIG.url + "plan/").then(function(res){ $scope.plans = res.data; });
+app.controller('PlanCtrl', function ($scope, $http, $rootScope, $window, API_CONFIG) {
+    // $http.get(API_CONFIG.url + "plan/").then(function(res){ $scope.plans = res.data; });
+
+    $scope.buyPlan = function(tier, planName) {
+        if(!$rootScope.currentUser) {
+            $rootScope.showToast("Please login to purchase a plan.", "error");
+            $window.location.href = 'login.html';
+            return;
+        }
+
+        // Simulating Payment Gateway interaction
+        var confirmPurchase = confirm("Confirm purchase of " + planName + "?\n\n(This is a demo, no actual charge will occur)");
+        
+        if(confirmPurchase) {
+            // Update User Tier in Backend
+            var userId = $rootScope.currentUser.id;
+            
+            $http.put(API_CONFIG.url + "customer/" + userId + "/", { plan_tier: tier })
+                .then(function(res) {
+                    $rootScope.showToast("Plan Upgraded to " + planName + "!", "success");
+                    
+                    // Update Local Session
+                    var updatedUser = res.data;
+                    $window.sessionStorage.setItem('currentUser', JSON.stringify(updatedUser));
+                    $rootScope.currentUser = updatedUser;
+                    
+                    // Redirect to Dashboard
+                    setTimeout(function() {
+                        $window.location.href = 'customer_dashboard.html';
+                    }, 1000);
+
+                }, function(err) {
+                    $rootScope.showToast("Purchase Failed. Try again.", "error");
+                });
+        }
+    };
 });
+
+// ... rest of existing code ...
 
 // --- 8. ADMIN DASHBOARD CONTROLLER ---
 app.controller('AdminDashCtrl', function ($scope, $http, $window, API_CONFIG) {
@@ -598,7 +652,7 @@ app.controller('AdminDashCtrl', function ($scope, $http, $window, API_CONFIG) {
 
 // --- 9. POST SELL LISTING ---
 app.controller('ProductSellCtrl', function ($scope, $http, $rootScope, $window, API_CONFIG) { 
-    $scope.product_sell = {};
+    $scope.product_sell = { unit: 'kg' }; // Default to kg
     $scope.categories = []; 
     $scope.productsList = []; 
     $scope.isSubmitting = false;
@@ -618,6 +672,7 @@ app.controller('ProductSellCtrl', function ($scope, $http, $rootScope, $window, 
             return;
         }
         $scope.isSubmitting = true;
+
         $scope.product_sell.customer = $rootScope.currentUser.id;
         $scope.product_sell.sellerName = $rootScope.currentUser.name;
         $scope.product_sell.phoneNo = $rootScope.currentUser.phone;
@@ -626,7 +681,13 @@ app.controller('ProductSellCtrl', function ($scope, $http, $rootScope, $window, 
             $rootScope.showToast("Success! Your produce is listed.", "success");
             $window.location.href = "customer_dashboard.html"; 
         }, function(err){ 
-            $rootScope.showToast("Error posting product. Check your connection or image size.", "error"); 
+            // Handle Plan Limit Error Specifically
+            if (err.status === 402) {
+                $rootScope.showToast(err.data.error, "error");
+                setTimeout(function(){ $window.location.href = 'plan.html'; }, 3000);
+            } else {
+                $rootScope.showToast("Error posting product: " + (err.data.error || "Unknown"), "error"); 
+            }
             $scope.isSubmitting = false;
         });
     };
@@ -634,7 +695,7 @@ app.controller('ProductSellCtrl', function ($scope, $http, $rootScope, $window, 
 
 // --- 10. POST BUY REQUEST ---
 app.controller('ProductBuyCtrl', function ($scope, $http, $rootScope, $window, API_CONFIG) { 
-    $scope.product_buy = {};
+    $scope.product_buy = { unit: 'kg' }; // Default
     $scope.categories = []; 
     $scope.productsList = []; 
     $scope.isSubmitting = false;
@@ -680,14 +741,12 @@ app.controller('UserCtrl', function ($scope, $http, $window, API_CONFIG) {
 
     $scope.saveUser = function() {
         if ($scope.user.id) {
-            // Edit Mode
             $http.put(API_CONFIG.url + "user/" + $scope.user.id + "/", $scope.user).then(function() {
                 alert("Admin updated!");
                 $scope.user = {};
                 loadUsers();
             }, function(err) { alert("Error updating admin."); });
         } else {
-            // Create Mode
             if(!$scope.user.password) {
                 alert("Password is required for new admins.");
                 return;
@@ -713,7 +772,53 @@ app.controller('UserCtrl', function ($scope, $http, $window, API_CONFIG) {
         }
     };
 });
+// =======================================================
+// ✅ PROFILE CONTROLLER
+// =======================================================
+app.controller('ProfileCtrl', function ($scope, $http, $window, $rootScope, API_CONFIG) {
+    // 1. Check if user is logged in
+    if(!$rootScope.currentUser) {
+        $window.location.href = 'login.html';
+        return;
+    }
 
+    // 2. Load current data into the form (Copy prevents live editing of the navbar name)
+    $scope.profile = angular.copy($rootScope.currentUser);
+    
+    // Remove password field for security
+    delete $scope.profile.password; 
+
+    // 3. Update Function
+    $scope.updateProfile = function() {
+        var userId = $rootScope.currentUser.id;
+        
+        // Prepare Payload
+        var payload = {
+            name: $scope.profile.name,
+            phone: $scope.profile.phone,
+            address: $scope.profile.address,
+            email: $scope.profile.email 
+        };
+
+        // If a new image was selected (base64 string), add it
+        if ($scope.profile.newImage) {
+            payload.profile_image = $scope.profile.newImage; 
+        }
+
+        // Send PUT Request
+        $http.put(API_CONFIG.url + "customer/" + userId + "/", payload).then(function(res) {
+            $rootScope.showToast("Profile Updated Successfully!", "success");
+            
+            // Update Session Storage with new data (so navbar updates on refresh)
+            var updatedUser = res.data;
+            $window.sessionStorage.setItem('currentUser', JSON.stringify(updatedUser));
+            $rootScope.currentUser = updatedUser;
+            
+        }, function(err) {
+            $rootScope.showToast("Update Failed: " + (err.data.error || "Server Error"), "error");
+        });
+    };
+});
 // --- 12. CUSTOMER DASHBOARD CONTROLLER ---
 app.controller('CustomerDashCtrl', function ($scope, $http, $rootScope, $window, API_CONFIG) {
     $scope.activeTab = 'sell';
@@ -766,8 +871,23 @@ app.controller('CustomerDashCtrl', function ($scope, $http, $rootScope, $window,
     };
 
     $scope.updateBid = function(bid, status) {
-        $http.put(API_CONFIG.url + "product_bid/" + bid.id + "/", { status: status }).then(function() {
+        // Optimistic UI update not safe here due to Race Conditions checks on backend
+        // We wait for response
+        $http.put(API_CONFIG.url + "product_bid/" + bid.id + "/", { status: status }).then(function(res) {
             bid.status = status;
+            $rootScope.showToast("Bid Updated Successfully!", "success");
+            
+            // Reload data to reflect new inventory counts if Accepted
+            if(status === 'ACCEPTED') loadData();
+            
+        }, function(err) {
+            if(err.status === 409) {
+                // Conflict: Race Condition / Insufficient Stock
+                $rootScope.showToast("Stock Insufficient! " + err.data.error, "error");
+                bid.status = 'INVALID'; // Update local state to reflect backend reality
+            } else {
+                $rootScope.showToast("Error updating bid.", "error");
+            }
         });
     };
 

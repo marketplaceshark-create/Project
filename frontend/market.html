@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en" ng-app="userApp">
 <head>
@@ -9,8 +10,29 @@
     <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.8.2/angular.min.js"></script>
     <script src="app.js"></script>
     <style>
-        .sidebar-sticky { position: sticky; top: 100px; z-index: 5; }
-        .filter-group { background: white; padding: 20px; border-radius: 16px; margin-bottom: 20px; box-shadow: var(--shadow-sm); }
+        /* Updated Sidebar CSS for Scrolling */
+        .sidebar-sticky { 
+            position: sticky; 
+            top: 90px; /* Distance from top of browser */
+            z-index: 5; 
+            max-height: calc(100vh - 110px); /* Height minus navbar/padding */
+            overflow-y: auto; /* Enable vertical scrolling */
+            padding-right: 5px; /* Prevent scrollbar overlapping content */
+        }
+        
+        /* Optional: Custom Scrollbar for nicer look */
+        .sidebar-sticky::-webkit-scrollbar { width: 6px; }
+        .sidebar-sticky::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 4px; }
+        .sidebar-sticky::-webkit-scrollbar-thumb { background: #c1c1c1; border-radius: 4px; }
+        .sidebar-sticky::-webkit-scrollbar-thumb:hover { background: #a8a8a8; }
+
+        .filter-group { 
+            background: white; 
+            padding: 20px; 
+            border-radius: 16px; 
+            margin-bottom: 20px; 
+            box-shadow: var(--shadow-sm); 
+        }
     </style>
 </head>
 <body ng-controller="MarketCtrl">
@@ -29,23 +51,48 @@
                         </div>
                         <hr class="text-muted opacity-25">
                         
+                        <!-- Listing Type -->
                         <label class="small fw-bold text-muted text-uppercase mb-2">Listing Type</label>
-                        <div class="form-check mb-2">
+                        <div class="form-check mb-1">
                             <input class="form-check-input" type="radio" name="type" ng-model="filters.type" value="sell" ng-change="applyFilters()">
                             <label class="form-check-label">For Sale</label>
                         </div>
-                        <div class="form-check">
+                        <div class="form-check mb-3">
                             <input class="form-check-input" type="radio" name="type" ng-model="filters.type" value="buy" ng-change="applyFilters()">
                             <label class="form-check-label">Buy Requests</label>
                         </div>
-                    </div>
 
-                    <div class="filter-group">
-                         <label class="small fw-bold text-muted text-uppercase mb-2">Location</label>
-                         <select class="form-select form-select-sm bg-light border-0" ng-model="filters.location" ng-change="applyFilters()">
-                            <option value="">Anywhere</option>
-                            <option ng-repeat="loc in locations" value="{{loc}}">{{loc}}</option>
+                        <!-- Category Filter -->
+                        <label class="small fw-bold text-muted text-uppercase mb-2">Category</label>
+                        <select class="form-select form-select-sm mb-3" 
+                                ng-model="filters.categoryId" 
+                                ng-change="applyFilters()"
+                                ng-options="c.id as c.name for c in categories">
+                            <option value="">All Categories</option>
                         </select>
+
+                        <!-- Product Filter -->
+                        <label class="small fw-bold text-muted text-uppercase mb-2">Product</label>
+                        <select class="form-select form-select-sm mb-3" 
+                                ng-model="filters.productId" 
+                                ng-change="applyFilters()"
+                                ng-options="p.id as p.productName for p in masterProducts | filter: {category: filters.categoryId}">
+                            <option value="">All Products</option>
+                        </select>
+
+                        <!-- Price Range Filter -->
+                        <label class="small fw-bold text-muted text-uppercase mb-2">Price Range (₹)</label>
+                        <div class="d-flex gap-2 mb-3">
+                            <input type="number" class="form-control form-control-sm" placeholder="Min" ng-model="filters.minPrice" ng-change="applyFilters()">
+                            <input type="number" class="form-control form-control-sm" placeholder="Max" ng-model="filters.maxPrice" ng-change="applyFilters()">
+                        </div>
+
+                        <!-- Location Searchable Textbox -->
+                        <label class="small fw-bold text-muted text-uppercase mb-2">Location</label>
+                        <input class="form-control form-control-sm" list="locationOptions" ng-model="filters.location" ng-change="applyFilters()" placeholder="Type city...">
+                        <datalist id="locationOptions">
+                            <option ng-repeat="loc in locations" value="{{loc}}">
+                        </datalist>
                     </div>
                 </div>
             </div>
@@ -72,18 +119,18 @@
                             </div>
 
                             <div class="prod-body d-flex flex-column" style="min-height: 180px;">
-                                <div class="prod-title">{{item.name || item.productName}}</div>
+                                <div class="prod-title text-truncate">{{item.name || item.productName}}</div>
                                 <div class="prod-loc"><i class="bi bi-geo-alt-fill text-danger small"></i> {{item.location}}</div>
                                 
                                 <div class="mt-auto pt-3 border-top">
                                     <div class="d-flex justify-content-between align-items-center">
                                         <div>
                                             <div class="small text-muted text-uppercase fw-bold" style="font-size: 0.7rem;">Price</div>
-                                            <div class="prod-price">₹{{item.price}}</div>
+                                            <div class="prod-price small">₹{{item.price}} <span class="text-muted fw-normal fs-6">/ {{item.unit || 'kg'}}</span></div>
                                         </div>
                                         <div class="text-end">
                                             <div class="small text-muted text-uppercase fw-bold" style="font-size: 0.7rem;">Qty</div>
-                                            <div class="fw-bold">{{item.quantity}}</div>
+                                            <div class="fw-bold">{{item.quantity}} <span class="small">{{item.unit || 'kg'}}</span></div>
                                         </div>
                                     </div>
                                 </div>
@@ -95,6 +142,7 @@
                 <div ng-if="filteredItems.length === 0" class="text-center py-5">
                     <div class="text-muted display-1"><i class="bi bi-inbox"></i></div>
                     <p class="h5 mt-3 text-muted">No items found matching your filters.</p>
+                    <button class="btn btn-outline-success btn-sm mt-2" ng-click="resetFilters()">Reset All Filters</button>
                 </div>
             </div>
         </div>

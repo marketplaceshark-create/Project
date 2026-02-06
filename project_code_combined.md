@@ -1,3 +1,98 @@
+## File: ProblemStatement.md
+```
+# Path: ProblemStatement.md
+***
+
+# **Project Specification: B2B Agricultural Marketplace**
+
+## **1. Problem Statement**
+
+**The Challenge: Inefficiency and Rigidity in Agricultural Trading**
+The current agricultural B2B landscape is fragmented. Farmers, Wholesalers, and Processors ("Customers") face significant barriers to efficient trading:
+
+1.  **Geographical & Network Limitations:** Customers are largely restricted to their local networks or *mandis*, limiting their ability to find buyers or sellers nationwide who might offer better terms.
+2.  **Lack of Price Optimization:** Without a competitive bidding environment, sellers often settle for the first available offer rather than the best market price. Conversely, buyers cannot easily compare rates from multiple sources.
+3.  **Rigid Transaction Sizes:** Traditional trade often demands "all-or-nothing" deals. There is no streamlined digital mechanism for a large seller to fulfill their stock through multiple smaller buyers (partial fulfillment) without complex manual coordination.
+4.  **Opaque Communication:** Finding a counter-party often involves layers of middlemen, preventing direct contact and negotiation between the actual buyer and seller.
+
+**The Solution:**
+A simplified, web-based platform that facilitates **direct B2B connections** through a transparent **bidding and negotiation engine**. The platform enables users to act interchangeably as buyers or sellers, democratizing access to the national market while allowing flexible, partial fulfillment of orders.
+
+---
+
+## **2. Core Logic & Business Rules**
+
+### **A. User Roles & Visibility**
+*   **Unified Role:** All users (Farmers, Wholesalers, Processors) are "Customers."
+*   **Public Data:** Post Title, Category, Product, Quantity, Price, Customer Name, and Location (State/District) are visible to all users.
+*   **Private Data:** Email and Phone Number are **hidden** until a bid is formally **Accepted**.
+
+### **B. Inventory & Bidding Logic**
+1.  **Placing a Bid:**
+    *   Bidders input: **Price**, **Quantity**, and a **Message** (e.g., location details).
+    *   *Validation:* Bid Quantity cannot exceed the Post's current available quantity.
+    *   *Note:* Placing a bid **does not** reserve the stock. Multiple users can bid for the full amount simultaneously.
+
+2.  **Acceptance & Partial Fulfillment:**
+    *   **Action:** The Post Owner manually reviews bids and clicks "Accept."
+    *   **Inventory Deduction:** Quantity is deducted from the Post **only when a bid is Accepted**.
+    *   **Partial Logic:** A Post Owner can accept multiple smaller bids until the post quantity reaches 0.
+
+3.  **Concurrency / Race Condition Handling:**
+    *   *Scenario:* A Post has 10 Tons. User A bids for 10 Tons. User B bids for 10 Tons. Both bids are "Pending."
+    *   *Outcome:* The Post Owner sees both. If the Owner accepts User A's bid:
+        1.  Post Quantity becomes 0.
+        2.  User A's Bid becomes "Accepted."
+        3.  User B's Bid status automatically updates to **"INVALID"**.
+    *   *System Check:* The system must prevent the Owner from accepting User B's bid after User A's bid has already consumed the stock.
+
+4.  **The "Invalid Bid" State:**
+    *   **Trigger:** When `Remaining Post Quantity` drops below a `Pending Bid Quantity`.
+    *   **Action:** The system changes the bid status to **"INVALID"** and sends an **Email Notification** to the Bidder.
+    *   **Restriction:** The Post Owner **cannot** accept an "Invalid" bid.
+    *   **Resolution:** The Bidder must edit the bid (lowering quantity) or Cancel it.
+
+### **C. Negotiation Flow**
+1.  **Pending:** Bid placed; awaiting Owner action.
+2.  **Accepted:** Owner accepts. Contact details exchanged. Quantity deducted.
+3.  **Rejected:** Owner rejects. Bidder can submit a revised price/quantity.
+4.  **Invalid:** Post quantity is insufficient for this bid.
+5.  **Cancelled:** Withdrawn by the bidder.
+
+### **D. Subscription & Listing Model**
+*   **Free Tier:** 3 free posts per account.
+*   **Paid Plans:** Users purchase plans to add more posts (e.g., 10 posts with 30-day posting validity).
+*   **Plan Validity Rule:** Validity applies to the *ability to create new posts*.
+    *   If a plan expires, the user cannot create new posts.
+    *   **Existing posts remain active** indefinitely (until the user deletes them or stock is sold out).
+    *   Users can edit existing posts without an active plan.
+
+### **E. Notifications (MVP)**
+*   **Channel:** Email Only (SMS/WhatsApp planned for future).
+*   **Triggers:** New Bid, Bid Accepted (Unlock Contact Info), Bid Rejected, Bid Invalidated.
+
+---
+
+## **3. Search & Filters**
+To ensure high liquidity and discoverability, the platform includes:
+*   **Text Search:** By Product Name.
+*   **Filters:**
+    *   **Category** (Grains, Pulses, Spices, etc.)
+    *   **Product** (Wheat, Soybeans, etc.)
+    *   **Location** (State / District filtering)
+    *   **Price Range** (Min / Max)
+
+---
+
+### **Developer Note: The "Accept" Button Logic**
+*   **Critical Check:** When the Post Owner clicks "Accept" on a bid, the backend must perform a final check:
+    *   `IF (Current_Post_Quantity >= Bid_Quantity) THEN Process_Acceptance`
+    *   `ELSE Return_Error("Insufficient Quantity. Please Reject or wait for Bidder to update.")`
+    *   This prevents negative inventory if two admins/users try to accept different bids on the same post simultaneously (rare but possible).
+```
+
+---
+
 ## File: frontend/about.html
 ```html
 # Path: frontend/about.html
@@ -190,6 +285,7 @@
 ## File: frontend/category.html
 ```html
 # Path: frontend/category.html
+
 <!DOCTYPE html>
 <html lang="en" ng-app="userApp">
 <head>
@@ -197,13 +293,36 @@
     <title>Categories - Agrivendia</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link href="css/styles.css" rel="stylesheet">
     <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.8.2/angular.min.js"></script>
     <script src="app.js"></script>
     <style>
-        .cat-icon { width: 80px; height: 80px; background: #f1f8e9; color: #2E7D32; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 2.5rem; margin: 0 auto 20px; transition: 0.3s; }
-        .category-card:hover .cat-icon { background: #2E7D32; color: white; }
+        .cat-icon { 
+            width: 80px; 
+            height: 80px; 
+            background: #f1f8e9; 
+            color: #2E7D32; 
+            border-radius: 50%; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            font-size: 2.5rem; 
+            margin: 0 auto 20px; 
+            transition: 0.3s; 
+        }
+        .category-card:hover .cat-icon { 
+            background: #2E7D32; 
+            color: white; 
+        }
+        .category-card {
+            border: 1px solid #eee;
+            border-radius: 12px;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .category-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.05);
+        }
     </style>
 </head>
 <body ng-controller="CategoryPageCtrl">
@@ -215,28 +334,62 @@
             <h1 class="fw-bold text-success">Browse Categories</h1>
             <p class="text-muted">Find exactly what you need</p>
             <div class="position-relative mx-auto" style="max-width: 500px;">
-                <input type="text" class="form-control rounded-pill py-3 px-4" ng-model="searchQuery" placeholder="Search categories...">
+                <input type="text" class="form-control rounded-pill py-3 px-4 shadow-sm" 
+                       ng-model="searchQuery" 
+                       placeholder="Search categories or specific products (e.g. 'Tomato')...">
             </div>
         </div>
     </div>
 
     <div class="container py-5">
         <div class="row g-4">
-            <div class="col-lg-3 col-md-4 col-sm-6" ng-repeat="cat in categories | filter:searchQuery">
-                <div class="category-card p-4 text-center h-100 cursor-pointer" ng-click="goToMarket(cat)" style="cursor:pointer">
-                    <div class="cat-icon"><i class="bi" ng-class="getCategoryIcon(cat.name)"></i></div>
+            <!-- This loop uses the 'categories' array, which MUST be dynamically loaded from the backend API -->
+            <div class="col-lg-3 col-md-4 col-sm-6" ng-repeat="cat in categories | filter:categoryFilter">
+                <div class="category-card p-4 text-center h-100" ng-click="goToMarket(cat)" style="cursor:pointer">
+                    
+                    <div class="cat-icon">
+                        <i class="bi" ng-class="getCategoryIcon(cat.name)"></i>
+                    </div>
                     <h5 class="fw-bold text-dark">{{cat.name}}</h5>
                     <p class="text-muted small">{{cat.description | limitTo:60}}...</p>
-                    <span class="text-success fw-bold small">View Products <i class="bi bi-arrow-right"></i></span>
+                    
+                    <hr class="my-3 opacity-25">
+
+                    <div ng-if="searchQuery" class="mb-3">
+                        <div class="d-flex flex-wrap justify-content-center gap-1">
+                            <span class="badge bg-success-subtle text-success border border-success px-2 py-1" 
+                                  ng-repeat="p in cat.productList | filter:searchQuery | limitTo:2">
+                                <i class="bi bi-search small me-1"></i>Found: {{p}}
+                            </span>
+                        </div>
+                    </div>
+
+                    <div class="mt-auto">
+                        <span class="text-success fw-bold small">View Products <i class="bi bi-arrow-right"></i></span>
+                    </div>
                 </div>
             </div>
         </div>
-        <div class="text-center text-muted py-5" ng-if="categories.length === 0">
-            <div class="spinner-border text-success"></div>
+
+        <div class="text-center text-muted py-5" ng-if="(categories | filter:categoryFilter).length === 0">
+            <div ng-if="!searchQuery && categories.length === 0">
+                <div class="spinner-border text-success mb-3"></div>
+                <p>Loading categories...</p>
+            </div>
+            <div ng-if="!searchQuery && categories.length > 0">
+                 <i class="bi bi-grid-3x3-gap display-4 text-muted mb-3"></i>
+                 <p class="fs-5">No categories matched your search filters.</p>
+            </div>
+            <div ng-if="searchQuery">
+                <i class="bi bi-search-heart display-4 text-warning mb-3"></i>
+                <p class="fs-5">No categories found matching "<strong>{{searchQuery}}</strong>"</p>
+                <button class="btn btn-outline-success btn-sm mt-2" ng-click="searchQuery = ''">Clear Search</button>
+            </div>
         </div>
     </div>
     
     <div ng-include="'components/footer.html'"></div>
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
@@ -343,6 +496,7 @@
 ## File: frontend/customer_dashboard.html
 ```html
 # Path: frontend/customer_dashboard.html
+
 <!DOCTYPE html>
 <html lang="en" ng-app="userApp">
 <head>
@@ -355,15 +509,29 @@
     <script src="app.js"></script>
 </head>
 <body ng-controller="CustomerDashCtrl" style="background: #f8f9fa;">
+    
+    <div id="toast-container">
+        <div class="custom-toast" ng-repeat="t in toasts" ng-class="t.type">
+            <div class="toast-icon"><i class="bi" ng-class="{'bi-check-circle-fill': t.type=='success', 'bi-x-circle-fill': t.type=='error'}"></i></div>
+            <div class="fw-bold">{{t.message}}</div>
+        </div>
+    </div>
 
     <div ng-include="'components/navbar.html'" ng-init="activePage='dashboard'"></div>
 
     <div class="container py-5">
         <!-- HEADER -->
         <div class="d-flex justify-content-between align-items-center mb-5">
-            <div>
-                <h2 class="fw-bold m-0 text-dark">My Dashboard</h2>
-                <p class="text-muted">Manage your listings and bids</p>
+            <div class="d-flex align-items-center">
+                <div class="me-4 position-relative">
+                     <img ng-src="{{ getImageUrl(currentUser) || 'https://via.placeholder.com/150' }}" 
+                          class="rounded-circle shadow-sm border border-3 border-white" 
+                          style="width: 80px; height: 80px; object-fit: cover;">
+                </div>
+                <div>
+                    <h2 class="fw-bold m-0 text-dark">Hello, {{currentUser.name}}</h2>
+                    <p class="text-muted m-0">Manage your listings</p>
+                </div>
             </div>
             <button ng-click="logout()" class="btn btn-outline-danger rounded-pill px-4 btn-sm">Logout</button>
         </div>
@@ -372,35 +540,27 @@
         <div class="row g-4 mb-5">
             <div class="col-md-4">
                 <div class="stat-card">
-                    <div>
-                        <div class="text-muted small fw-bold text-uppercase">Active Sales</div>
-                        <h2 class="fw-bold text-dark m-0">{{myListings.length}}</h2>
-                    </div>
+                    <div><div class="text-muted small fw-bold text-uppercase">Active Sales</div><h2 class="fw-bold text-dark m-0">{{myListings.length}}</h2></div>
                     <div class="stat-icon bg-success-subtle text-success"><i class="bi bi-shop"></i></div>
                 </div>
             </div>
             <div class="col-md-4">
                 <div class="stat-card">
-                    <div>
-                        <div class="text-muted small fw-bold text-uppercase">Buy Requests</div>
-                        <h2 class="fw-bold text-dark m-0">{{myBuyRequests.length}}</h2>
-                    </div>
+                    <div><div class="text-muted small fw-bold text-uppercase">Buy Requests</div><h2 class="fw-bold text-dark m-0">{{myBuyRequests.length}}</h2></div>
                     <div class="stat-icon bg-primary-subtle text-primary"><i class="bi bi-cart"></i></div>
                 </div>
             </div>
             <div class="col-md-4">
                 <div class="stat-card">
-                    <div>
-                        <div class="text-muted small fw-bold text-uppercase">Pending Bids</div>
-                        <h2 class="fw-bold text-dark m-0">{{incomingBidsCount}}</h2>
-                    </div>
+                    <div><div class="text-muted small fw-bold text-uppercase">Pending Bids</div><h2 class="fw-bold text-dark m-0">{{incomingBidsCount}}</h2></div>
                     <div class="stat-icon bg-warning-subtle text-warning"><i class="bi bi-bell"></i></div>
                 </div>
             </div>
         </div>
 
-        <!-- TABS -->
+        <!-- TABS & CONTENT -->
         <div class="bg-white p-4 rounded-4 shadow-sm border">
+            <!-- REMOVED SETTINGS TAB FROM HERE -->
             <ul class="nav nav-pills nav-fill mb-4 p-1 bg-light rounded-pill" style="max-width: 600px; margin: 0 auto;">
                 <li class="nav-item">
                     <a class="nav-link rounded-pill" ng-class="{'active bg-white shadow-sm text-success': activeTab == 'sell'}" ng-click="activeTab = 'sell'" href="#">My Sales</a>
@@ -413,11 +573,9 @@
                 </li>
             </ul>
 
-            <!-- CONTENT: SALES -->
+            <!-- 1. MY SALES -->
             <div ng-show="activeTab == 'sell'">
-                <div class="text-end mb-3">
-                    <a href="product_sell.html" class="btn btn-primary-custom rounded-pill btn-sm"><i class="bi bi-plus-lg"></i> Sell Produce</a>
-                </div>
+                <div class="text-end mb-3"><a href="product_sell.html" class="btn btn-primary-custom rounded-pill btn-sm"><i class="bi bi-plus-lg"></i> Sell Produce</a></div>
                 <div class="card mb-3 border-0 shadow-sm" ng-repeat="item in myListings">
                     <div class="card-body p-4">
                         <div class="d-flex justify-content-between align-items-center">
@@ -425,7 +583,7 @@
                                 <div class="bg-success-subtle p-3 rounded-circle me-3 text-success"><i class="bi bi-box-seam fs-4"></i></div>
                                 <div>
                                     <h5 class="fw-bold mb-1"><a href="product_detail.html?id={{item.id}}&type=sell" class="text-dark text-decoration-none">{{item.productName}}</a></h5>
-                                    <div class="text-muted small">₹{{item.price}} • {{item.quantity}} Units • {{item.location}}</div>
+                                    <div class="text-muted small">₹{{item.price}} • {{item.quantity}} {{item.unit}} • {{item.location}}</div>
                                 </div>
                             </div>
                             <div>
@@ -436,16 +594,10 @@
                                 </button>
                             </div>
                         </div>
-                        
-                        <!-- Bids Section -->
                         <div ng-if="item.showBids" class="mt-4 bg-light p-3 rounded-3">
-                            <h6 class="fw-bold text-muted mb-3">Offers received</h6>
                             <div ng-if="getBidsForProduct(item.id, 'sell').length == 0" class="text-center text-muted small py-2">No offers yet.</div>
                             <div ng-repeat="bid in getBidsForProduct(item.id, 'sell')" class="d-flex justify-content-between align-items-center bg-white p-3 rounded mb-2 border">
-                                <div>
-                                    <span class="fw-bold">{{bid.bidder_details.name}}</span> offers <span class="text-success fw-bold">₹{{bid.amount}}</span> for {{bid.quantity}} units.
-                                    <div ng-if="bid.status == 'ACCEPTED'" class="text-success small mt-1"><i class="bi bi-telephone"></i> {{bid.bidder_details.phone}} | {{bid.bidder_details.email}}</div>
-                                </div>
+                                <div><span class="fw-bold">{{bid.bidder_details.name}}</span> offers <span class="text-success fw-bold">₹{{bid.amount}}</span></div>
                                 <div>
                                     <div ng-if="bid.status == 'PENDING'">
                                         <button class="btn btn-success btn-sm rounded-pill px-3" ng-click="updateBid(bid, 'ACCEPTED')">Accept</button>
@@ -457,21 +609,20 @@
                         </div>
                     </div>
                 </div>
+                <div ng-if="myListings.length == 0" class="text-center text-muted py-5">No active sales listings.</div>
             </div>
 
-            <!-- CONTENT: REQUESTS -->
+            <!-- 2. MY REQUESTS -->
             <div ng-show="activeTab == 'requests'">
-                <div class="text-end mb-3">
-                    <a href="product_buy.html" class="btn btn-primary-custom rounded-pill btn-sm"><i class="bi bi-plus-lg"></i> Post Request</a>
-                </div>
+                <div class="text-end mb-3"><a href="product_buy.html" class="btn btn-primary-custom rounded-pill btn-sm"><i class="bi bi-plus-lg"></i> Post Request</a></div>
                 <div class="card mb-3 border-0 shadow-sm" ng-repeat="item in myBuyRequests">
                     <div class="card-body p-4">
                         <div class="d-flex justify-content-between align-items-center">
                             <div class="d-flex align-items-center">
                                 <div class="bg-primary-subtle p-3 rounded-circle me-3 text-primary"><i class="bi bi-basket fs-4"></i></div>
                                 <div>
-                                    <h5 class="fw-bold mb-1"><a href="product_detail.html?id={{item.id}}&type=buy" class="text-dark text-decoration-none">{{item.productName || item.name || 'Request'}}</a></h5>
-                                    <div class="text-muted small">Target: ₹{{item.price}} • Need {{item.quantity}} Units</div>
+                                    <h5 class="fw-bold mb-1"><a href="product_detail.html?id={{item.id}}&type=buy" class="text-dark text-decoration-none">{{item.productName || item.name}}</a></h5>
+                                    <div class="text-muted small">Target: ₹{{item.price}} • Need {{item.quantity}} {{item.unit}}</div>
                                 </div>
                             </div>
                             <div>
@@ -479,29 +630,19 @@
                                 <button class="btn btn-outline-custom btn-sm rounded-pill" ng-click="item.showBids = !item.showBids">View Sellers</button>
                             </div>
                         </div>
-                        
-                        <!-- Bids Section -->
                         <div ng-if="item.showBids" class="mt-4 bg-light p-3 rounded-3">
                             <div ng-if="getBidsForProduct(item.id, 'buy').length == 0" class="text-center text-muted small">No sellers yet.</div>
                             <div ng-repeat="bid in getBidsForProduct(item.id, 'buy')" class="d-flex justify-content-between align-items-center bg-white p-3 rounded mb-2 border">
-                                <div>
-                                    <span class="fw-bold">{{bid.bidder_details.name}}</span> offers stock at <span class="text-success fw-bold">₹{{bid.amount}}</span>
-                                    <div ng-if="bid.status == 'ACCEPTED'" class="text-primary small mt-1"><i class="bi bi-telephone"></i> Contact: {{bid.bidder_details.phone}}</div>
-                                </div>
-                                <div>
-                                    <div ng-if="bid.status == 'PENDING'">
-                                        <button class="btn btn-success btn-sm rounded-pill px-3" ng-click="updateBid(bid, 'ACCEPTED')">Accept</button>
-                                        <button class="btn btn-outline-danger btn-sm rounded-pill px-3" ng-click="updateBid(bid, 'REJECTED')">Reject</button>
-                                    </div>
-                                    <span ng-if="bid.status != 'PENDING'" class="badge" ng-class="{'bg-success': bid.status=='ACCEPTED', 'bg-danger': bid.status=='REJECTED'}">{{bid.status}}</span>
-                                </div>
+                                <div><span class="fw-bold">{{bid.bidder_details.name}}</span> offers stock at <span class="text-success fw-bold">₹{{bid.amount}}</span></div>
+                                <span class="badge" ng-class="{'bg-success': bid.status=='ACCEPTED', 'bg-warning text-dark': bid.status=='PENDING'}">{{bid.status}}</span>
                             </div>
                         </div>
                     </div>
                 </div>
+                <div ng-if="myBuyRequests.length == 0" class="text-center text-muted py-5">No buy requests posted.</div>
             </div>
 
-            <!-- CONTENT: MY BIDS -->
+            <!-- 3. MY BIDS -->
             <div ng-show="activeTab == 'bids'">
                 <div class="row g-4">
                     <div class="col-md-6" ng-repeat="bid in myBids">
@@ -516,26 +657,13 @@
                                      <a ng-if="bid.buy_post" href="product_detail.html?id={{bid.buy_post}}&type=buy" class="text-dark">View Listing <i class="bi bi-box-arrow-up-right"></i></a>
                                 </h5>
                                 <div class="p-3 bg-light rounded">
-                                    <div class="d-flex justify-content-between">
-                                        <span class="text-muted">Your Offer:</span>
-                                        <span class="fw-bold text-success">₹{{bid.amount}}</span>
-                                    </div>
-                                    <div class="d-flex justify-content-between">
-                                        <span class="text-muted">Quantity:</span>
-                                        <span class="fw-bold">{{bid.quantity}}</span>
-                                    </div>
-                                </div>
-                                <div ng-if="bid.status == 'ACCEPTED'" class="mt-3 alert alert-success mb-0 p-2 text-center small">
-                                    <div class="fw-bold">Bid Accepted!</div>
-                                    Call Owner: {{bid.post_owner_details.phone}}<br>
-                                    {{bid.post_owner_details.name}}
+                                    <div class="d-flex justify-content-between"><span class="text-muted">Your Offer:</span><span class="fw-bold text-success">₹{{bid.amount}}</span></div>
                                 </div>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
-
         </div>
     </div>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
@@ -649,6 +777,7 @@
 ## File: frontend/market.html
 ```html
 # Path: frontend/market.html
+
 <!DOCTYPE html>
 <html lang="en" ng-app="userApp">
 <head>
@@ -660,8 +789,29 @@
     <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.8.2/angular.min.js"></script>
     <script src="app.js"></script>
     <style>
-        .sidebar-sticky { position: sticky; top: 100px; z-index: 5; }
-        .filter-group { background: white; padding: 20px; border-radius: 16px; margin-bottom: 20px; box-shadow: var(--shadow-sm); }
+        /* Updated Sidebar CSS for Scrolling */
+        .sidebar-sticky { 
+            position: sticky; 
+            top: 90px; /* Distance from top of browser */
+            z-index: 5; 
+            max-height: calc(100vh - 110px); /* Height minus navbar/padding */
+            overflow-y: auto; /* Enable vertical scrolling */
+            padding-right: 5px; /* Prevent scrollbar overlapping content */
+        }
+        
+        /* Optional: Custom Scrollbar for nicer look */
+        .sidebar-sticky::-webkit-scrollbar { width: 6px; }
+        .sidebar-sticky::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 4px; }
+        .sidebar-sticky::-webkit-scrollbar-thumb { background: #c1c1c1; border-radius: 4px; }
+        .sidebar-sticky::-webkit-scrollbar-thumb:hover { background: #a8a8a8; }
+
+        .filter-group { 
+            background: white; 
+            padding: 20px; 
+            border-radius: 16px; 
+            margin-bottom: 20px; 
+            box-shadow: var(--shadow-sm); 
+        }
     </style>
 </head>
 <body ng-controller="MarketCtrl">
@@ -680,23 +830,48 @@
                         </div>
                         <hr class="text-muted opacity-25">
                         
+                        <!-- Listing Type -->
                         <label class="small fw-bold text-muted text-uppercase mb-2">Listing Type</label>
-                        <div class="form-check mb-2">
+                        <div class="form-check mb-1">
                             <input class="form-check-input" type="radio" name="type" ng-model="filters.type" value="sell" ng-change="applyFilters()">
                             <label class="form-check-label">For Sale</label>
                         </div>
-                        <div class="form-check">
+                        <div class="form-check mb-3">
                             <input class="form-check-input" type="radio" name="type" ng-model="filters.type" value="buy" ng-change="applyFilters()">
                             <label class="form-check-label">Buy Requests</label>
                         </div>
-                    </div>
 
-                    <div class="filter-group">
-                         <label class="small fw-bold text-muted text-uppercase mb-2">Location</label>
-                         <select class="form-select form-select-sm bg-light border-0" ng-model="filters.location" ng-change="applyFilters()">
-                            <option value="">Anywhere</option>
-                            <option ng-repeat="loc in locations" value="{{loc}}">{{loc}}</option>
+                        <!-- Category Filter -->
+                        <label class="small fw-bold text-muted text-uppercase mb-2">Category</label>
+                        <select class="form-select form-select-sm mb-3" 
+                                ng-model="filters.categoryId" 
+                                ng-change="applyFilters()"
+                                ng-options="c.id as c.name for c in categories">
+                            <option value="">All Categories</option>
                         </select>
+
+                        <!-- Product Filter -->
+                        <label class="small fw-bold text-muted text-uppercase mb-2">Product</label>
+                        <select class="form-select form-select-sm mb-3" 
+                                ng-model="filters.productId" 
+                                ng-change="applyFilters()"
+                                ng-options="p.id as p.productName for p in masterProducts | filter: {category: filters.categoryId}">
+                            <option value="">All Products</option>
+                        </select>
+
+                        <!-- Price Range Filter -->
+                        <label class="small fw-bold text-muted text-uppercase mb-2">Price Range (₹)</label>
+                        <div class="d-flex gap-2 mb-3">
+                            <input type="number" class="form-control form-control-sm" placeholder="Min" ng-model="filters.minPrice" ng-change="applyFilters()">
+                            <input type="number" class="form-control form-control-sm" placeholder="Max" ng-model="filters.maxPrice" ng-change="applyFilters()">
+                        </div>
+
+                        <!-- Location Searchable Textbox -->
+                        <label class="small fw-bold text-muted text-uppercase mb-2">Location</label>
+                        <input class="form-control form-control-sm" list="locationOptions" ng-model="filters.location" ng-change="applyFilters()" placeholder="Type city...">
+                        <datalist id="locationOptions">
+                            <option ng-repeat="loc in locations" value="{{loc}}">
+                        </datalist>
                     </div>
                 </div>
             </div>
@@ -723,18 +898,18 @@
                             </div>
 
                             <div class="prod-body d-flex flex-column" style="min-height: 180px;">
-                                <div class="prod-title">{{item.name || item.productName}}</div>
+                                <div class="prod-title text-truncate">{{item.name || item.productName}}</div>
                                 <div class="prod-loc"><i class="bi bi-geo-alt-fill text-danger small"></i> {{item.location}}</div>
                                 
                                 <div class="mt-auto pt-3 border-top">
                                     <div class="d-flex justify-content-between align-items-center">
                                         <div>
                                             <div class="small text-muted text-uppercase fw-bold" style="font-size: 0.7rem;">Price</div>
-                                            <div class="prod-price">₹{{item.price}}</div>
+                                            <div class="prod-price small">₹{{item.price}} <span class="text-muted fw-normal fs-6">/ {{item.unit || 'kg'}}</span></div>
                                         </div>
                                         <div class="text-end">
                                             <div class="small text-muted text-uppercase fw-bold" style="font-size: 0.7rem;">Qty</div>
-                                            <div class="fw-bold">{{item.quantity}}</div>
+                                            <div class="fw-bold">{{item.quantity}} <span class="small">{{item.unit || 'kg'}}</span></div>
                                         </div>
                                     </div>
                                 </div>
@@ -746,6 +921,7 @@
                 <div ng-if="filteredItems.length === 0" class="text-center py-5">
                     <div class="text-muted display-1"><i class="bi bi-inbox"></i></div>
                     <p class="h5 mt-3 text-muted">No items found matching your filters.</p>
+                    <button class="btn btn-outline-success btn-sm mt-2" ng-click="resetFilters()">Reset All Filters</button>
                 </div>
             </div>
         </div>
@@ -847,37 +1023,82 @@
 ## File: frontend/login.html
 ```html
 # Path: frontend/login.html
+
 <!DOCTYPE html>
 <html lang="en" ng-app="userApp">
 <head>
     <meta charset="UTF-8">
     <title>Login - Agrivendia</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
     <link href="css/styles.css" rel="stylesheet">
     <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.8.2/angular.min.js"></script>
     <script src="app.js"></script>
 </head>
 <body ng-controller="AuthCtrl" class="auth-bg">
     
+    <!-- Toast Container for Error Messages -->
+    <div id="toast-container">
+        <div class="custom-toast" ng-repeat="t in toasts" ng-class="t.type">
+            <div class="toast-icon">
+                <i class="bi" ng-class="{'bi-check-circle-fill': t.type=='success', 'bi-x-circle-fill': t.type=='error', 'bi-info-circle-fill': t.type=='info'}"></i>
+            </div>
+            <div class="fw-bold">{{t.message}}</div>
+        </div>
+    </div>
+
     <div class="auth-card">
         <div class="text-center mb-4">
             <h1 class="fw-bold text-success mb-0">Agrivendia</h1>
             <p class="text-muted">Welcome back to the market</p>
         </div>
 
-        <form ng-submit="loginCustomer()">
+        <!-- Form with Validation Name 'loginForm' -->
+        <form name="loginForm" ng-submit="loginForm.$valid && loginCustomer()" novalidate>
+            <!-- EMAIL FIELD -->
             <div class="mb-3">
                 <label class="form-label small fw-bold text-uppercase text-muted">Email Address</label>
-                <input type="email" class="form-control" ng-model="loginData.email" required placeholder="name@example.com">
+                <input type="email" 
+                       name="email"
+                       class="form-control" 
+                       ng-model="loginData.email" 
+                       ng-class="{'is-invalid': loginForm.email.$touched && loginForm.email.$invalid}"
+                       required 
+                       placeholder="name@example.com">
+                <div class="invalid-feedback" ng-show="loginForm.email.$error.required">Email is required.</div>
+                <div class="invalid-feedback" ng-show="loginForm.email.$error.email">Please enter a valid email address.</div>
             </div>
+
+            <!-- PASSWORD FIELD WITH EYE ICON -->
             <div class="mb-4">
                 <label class="form-label small fw-bold text-uppercase text-muted">Password</label>
-                <input type="password" class="form-control" ng-model="loginData.password" required placeholder="••••••••">
+                <div class="input-group has-validation">
+                    <!-- Dynamic type: text vs password -->
+                    <input type="{{ showPassword ? 'text' : 'password' }}" 
+                           name="password"
+                           class="form-control" 
+                           ng-model="loginData.password" 
+                           ng-class="{'is-invalid': loginForm.password.$touched && loginForm.password.$invalid}"
+                           required 
+                           placeholder="••••••••">
+                    
+                    <!-- Eye Icon Button -->
+                    <button class="btn btn-outline-secondary" type="button" ng-click="togglePassword()">
+                        <i class="bi" ng-class="showPassword ? 'bi-eye-slash' : 'bi-eye'"></i>
+                    </button>
+                    
+                    <div class="invalid-feedback" ng-show="loginForm.password.$error.required">
+                        Password is required.
+                    </div>
+                </div>
+                
                 <div class="text-end mt-2">
                     <a href="forgot_password.html" class="small text-muted text-decoration-underline">Forgot password?</a>
                 </div>
             </div>
-            <button type="submit" class="btn-primary-custom w-100 py-3 rounded-pill shadow-lg">Login Securely</button>
+
+            <!-- Submit disabled if form is invalid -->
+            <button type="submit" class="btn-primary-custom w-100 py-3 rounded-pill shadow-lg" ng-disabled="loginForm.$invalid">Login Securely</button>
         </form>
 
         <div class="text-center mt-4 pt-3 border-top">
@@ -898,14 +1119,14 @@
 ## File: frontend/product_buy.html
 ```html
 # Path: frontend/product_buy.html
+# Path: frontend/product_buy.html
+
 <!DOCTYPE html>
 <html lang="en" ng-app="userApp">
 <head>
     <meta charset="UTF-8">
     <title>Request Product - Agrivendia</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
     <link href="css/styles.css" rel="stylesheet">
     <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.8.2/angular.min.js"></script>
     <script src="app.js"></script>
@@ -940,10 +1161,27 @@
                     <label class="small fw-bold text-muted">Ref Image (Optional)</label>
                     <input type="file" class="form-control" fileread="product_buy.image" accept="image/*">
                 </div>
+                
+                <!-- ✅ EXPANDED UNIT SELECTION -->
                 <div class="row g-3 mb-3">
-                    <div class="col-6"><label class="small fw-bold text-muted">Target Price</label><input type="number" class="form-control" ng-model="product_buy.price" required></div>
-                    <div class="col-6"><label class="small fw-bold text-muted">Qty Needed</label><input type="number" class="form-control" ng-model="product_buy.quantity" required></div>
+                    <div class="col-md-4">
+                        <label class="small fw-bold text-muted">Unit</label>
+                        <select class="form-select" ng-model="product_buy.unit" required>
+                            <option value="kg">Kg (Kilograms)</option>
+                            <option value="ton">Ton (Metric Ton)</option>
+                            <option value="quintal">Quintal</option>
+                            <option value="box">Box</option>
+                            <option value="crate">Crate</option>
+                            <option value="dozen">Dozen</option>
+                            <option value="piece">Piece</option>
+                            <option value="l">Litres</option>
+                            <option value="bag">Bag</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4"><label class="small fw-bold text-muted">Target Price</label><input type="number" class="form-control" ng-model="product_buy.price" min="1" required></div>
+                    <div class="col-md-4"><label class="small fw-bold text-muted">Qty Needed</label><input type="number" class="form-control" ng-model="product_buy.quantity" min="1" required></div>
                 </div>
+
                 <div class="mb-4"><label class="small fw-bold text-muted">Delivery Location</label><input type="text" class="form-control" ng-model="product_buy.location" required></div>
                 
                 <button type="submit" class="btn btn-primary w-100 rounded-pill fw-bold py-2" ng-disabled="isSubmitting">
@@ -952,6 +1190,112 @@
             </form>
         </div>
     </div>
+</body>
+</html>
+```
+
+---
+
+## File: frontend/profile.html
+```html
+# Path: frontend/profile.html
+<!DOCTYPE html>
+<html lang="en" ng-app="userApp">
+<head>
+    <meta charset="UTF-8">
+    <title>My Profile - Agrivendia</title>
+    <!-- CSS Dependencies -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="css/styles.css" rel="stylesheet">
+    
+    <!-- JS Dependencies -->
+    <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.8.2/angular.min.js"></script>
+    <script src="app.js"></script>
+</head>
+<body ng-controller="ProfileCtrl" class="bg-light">
+
+    <!-- Toast Notifications -->
+    <div id="toast-container">
+        <div class="custom-toast" ng-repeat="t in toasts" ng-class="t.type">
+            <div class="toast-icon">
+                <i class="bi" ng-class="{'bi-check-circle-fill': t.type=='success', 'bi-x-circle-fill': t.type=='error'}"></i>
+            </div>
+            <div class="fw-bold">{{t.message}}</div>
+        </div>
+    </div>
+
+    <!-- Navbar -->
+    <div ng-include="'components/navbar.html'"></div>
+
+    <div class="container py-5">
+        <div class="row justify-content-center">
+            <div class="col-lg-8">
+                <div class="card border-0 shadow-sm rounded-4 overflow-hidden">
+                    <div class="card-header bg-white border-0 p-4 pb-0">
+                        <h4 class="fw-bold text-success mb-0">Edit Profile</h4>
+                        <p class="text-muted small">Update your personal details.</p>
+                    </div>
+                    <div class="card-body p-5">
+                        <form ng-submit="updateProfile()">
+                            
+                            <!-- Profile Picture Upload (Base64) -->
+                            <div class="text-center mb-5">
+                                <div class="position-relative d-inline-block">
+                                    <!-- Displays New Image if selected, otherwise Current Image, otherwise Placeholder -->
+                                    <img ng-src="{{ profile.newImage || getImageUrl(profile) || 'https://via.placeholder.com/150' }}" 
+                                         class="rounded-circle shadow-sm border border-3" 
+                                         style="width: 140px; height: 140px; object-fit: cover;">
+                                    
+                                    <!-- Camera Icon Button -->
+                                    <label for="fileUpload" class="position-absolute bottom-0 end-0 bg-dark text-white rounded-circle p-2 shadow" style="cursor: pointer;">
+                                        <i class="bi bi-camera-fill"></i>
+                                    </label>
+                                    
+                                    <!-- Hidden Input for File Reader -->
+                                    <input type="file" id="fileUpload" class="d-none" fileread="profile.newImage" accept="image/*">
+                                </div>
+                                <div class="small text-muted mt-2">Allowed: JPG, PNG (Max 2MB)</div>
+                            </div>
+
+                            <div class="row g-4">
+                                <div class="col-md-6">
+                                    <label class="form-label fw-bold small text-muted text-uppercase">Full Name</label>
+                                    <input type="text" class="form-control" ng-model="profile.name" required>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label fw-bold small text-muted text-uppercase">Phone Number</label>
+                                    <input type="text" class="form-control" ng-model="profile.phone" required>
+                                </div>
+                                <div class="col-12">
+                                    <label class="form-label fw-bold small text-muted text-uppercase">Email Address</label>
+                                    <!-- Readonly because changing email breaks login usually -->
+                                    <input type="email" class="form-control bg-light text-muted" ng-model="profile.email" readonly disabled>
+                                    <div class="form-text text-end"><i class="bi bi-lock-fill"></i> Email cannot be changed</div>
+                                </div>
+                                <div class="col-12">
+                                    <label class="form-label fw-bold small text-muted text-uppercase">Address</label>
+                                    <textarea class="form-control" rows="3" ng-model="profile.address" required></textarea>
+                                </div>
+                            </div>
+
+                            <div class="mt-5 d-flex justify-content-between align-items-center">
+                                <a href="customer_dashboard.html" class="text-muted text-decoration-none">Cancel</a>
+                                <button type="submit" class="btn btn-primary-custom px-5 py-2 rounded-pill shadow-sm">
+                                    Save Changes
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div ng-include="'components/footer.html'"></div>
+    
+    <!-- Bootstrap Bundle JS (Required for Navbar Dropdowns) -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
 ```
@@ -990,14 +1334,15 @@
                     
                     <div class="d-flex align-items-center mb-4">
                         <h2 class="text-success fw-bold m-0 me-3">₹ {{product.price}}</h2>
-                        <span class="text-muted">/ Unit</span>
+                        <!-- UNIT DISPLAY -->
+                        <span class="text-muted fs-5">/ {{product.unit || 'kg'}}</span>
                     </div>
 
                     <div class="row g-3 mb-4">
                         <div class="col-6">
                             <div class="p-3 bg-light rounded-3 text-center">
                                 <div class="small text-muted fw-bold">QUANTITY</div>
-                                <div class="h5 fw-bold m-0">{{product.quantity}}</div>
+                                <div class="h5 fw-bold m-0">{{product.quantity}} {{product.unit || 'kg'}}</div>
                             </div>
                         </div>
                         <div class="col-6">
@@ -1031,18 +1376,18 @@
 
         <!-- BIDS SECTION -->
         <div class="row g-4">
-            <!-- BID FORM (If not owner) -->
+            <!-- BID FORM -->
             <div class="col-md-5" ng-if="!isOwner">
                 <div class="bg-white p-4 rounded-4 shadow-sm h-100">
                     <h4 class="fw-bold mb-3">Place an Offer</h4>
                     <form ng-submit="placeBid()">
                         <div class="form-floating mb-3">
                             <input type="number" class="form-control" id="qtyInput" ng-model="bid.quantity" placeholder="Quantity" required>
-                            <label for="qtyInput">Quantity Needed</label>
+                            <label for="qtyInput">Quantity Needed ({{product.unit || 'kg'}})</label>
                         </div>
                         <div class="form-floating mb-3">
                             <input type="number" class="form-control" id="priceInput" ng-model="bid.amount" placeholder="Price" required>
-                            <label for="priceInput">Your Price (₹)</label>
+                            <label for="priceInput">Your Price per {{product.unit || 'kg'}} (₹)</label>
                         </div>
                         <div class="form-floating mb-3">
                             <textarea class="form-control" id="msgInput" style="height: 100px" ng-model="bid.message" placeholder="Message"></textarea>
@@ -1069,7 +1414,7 @@
                                 <div>
                                     <div class="fw-bold">{{b.bidder_details.name}}</div>
                                     <div class="small text-muted">
-                                        Wants <strong class="text-dark">{{b.quantity}}</strong> units at <strong class="text-success fs-5">₹{{b.amount}}</strong>
+                                        Wants <strong class="text-dark">{{b.quantity}} {{product.unit || 'kg'}}</strong> at <strong class="text-success fs-5">₹{{b.amount}}</strong>
                                     </div>
                                     <div class="mt-2 small bg-white p-2 rounded text-secondary border" ng-if="b.message">
                                         <i class="bi bi-chat-quote me-1"></i> {{b.message}}
@@ -1188,13 +1533,13 @@
 ## File: frontend/register.html
 ```html
 # Path: frontend/register.html
+<!-- Path: frontend/register.html -->
 <!DOCTYPE html>
 <html lang="en" ng-app="userApp">
 <head>
     <meta charset="UTF-8">
     <title>Sign Up - Agrivendia</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
     <link href="css/styles.css" rel="stylesheet">
     <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.8.2/angular.min.js"></script>
@@ -1202,12 +1547,21 @@
 </head>
 <body ng-controller="AuthCtrl" style="background: #f4f7f6;">
     
-    <!-- REMOVED: Navbar include -->
-    
+    <!-- TOAST CONTAINER -->
+    <div id="toast-container">
+        <div class="custom-toast" ng-repeat="t in toasts" ng-class="t.type">
+            <div class="toast-icon">
+                <i class="bi" ng-class="{'bi-check-circle-fill': t.type=='success', 'bi-x-circle-fill': t.type=='error', 'bi-info-circle-fill': t.type=='info'}"></i>
+            </div>
+            <div class="fw-bold">{{t.message}}</div>
+        </div>
+    </div>
+
     <div class="d-flex align-items-center justify-content-center" style="min-height:100vh;">
         <div class="reg-card bg-white shadow-sm rounded border p-5" style="max-width:500px; width:100%;">
             <h3 class="fw-bold text-success text-center mb-4">Create Account</h3>
-            <form ng-submit="register()">
+            
+            <form name="regForm" ng-submit="register()" novalidate>
                 <div class="row">
                     <div class="col-md-6 mb-3">
                         <label class="small fw-bold text-muted">Name</label>
@@ -1226,22 +1580,79 @@
                     <label class="small fw-bold text-muted">Address</label>
                     <textarea class="form-control" ng-model="regData.address" rows="2" required></textarea>
                 </div>
-                <div class="row mb-4">
+
+                <!-- PASSWORD SECTION -->
+                <div class="row mb-2">
+                    <!-- Password Field -->
                     <div class="col-md-6">
                          <label class="small fw-bold text-muted">Password</label>
-                         <input type="password" class="form-control" ng-model="regData.password" required>
+                         <div class="input-group">
+                             <input type="{{ showPassword ? 'text' : 'password' }}" 
+                                    class="form-control" 
+                                    ng-model="regData.password" 
+                                    ng-pattern="/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)[A-Za-z\d@$!%*?&]{8,}$/" 
+                                    required>
+                             <button class="btn btn-outline-secondary" type="button" ng-click="togglePassword()">
+                                <i class="bi" ng-class="showPassword ? 'bi-eye-slash' : 'bi-eye'"></i>
+                             </button>
+                         </div>
                     </div>
+                    
+                    <!-- Confirm Field -->
                     <div class="col-md-6">
                          <label class="small fw-bold text-muted">Confirm</label>
-                         <input type="password" class="form-control" ng-model="regData.confirm_password" required>
+                         <div class="input-group">
+                             <input type="{{ showPassword ? 'text' : 'password' }}" 
+                                    class="form-control" 
+                                    ng-model="regData.confirm_password"
+                                    ng-class="{'is-valid': regData.confirm_password && regData.password === regData.confirm_password, 'is-invalid': regData.confirm_password && regData.password !== regData.confirm_password}" 
+                                    required>
+                             <button class="btn btn-outline-secondary" type="button" ng-click="togglePassword()">
+                                <i class="bi" ng-class="showPassword ? 'bi-eye-slash' : 'bi-eye'"></i>
+                             </button>
+                         </div>
                     </div>
                 </div>
-                <button type="submit" class="btn-success-custom w-100 rounded">Register</button>
+
+                <!-- Match Status Message -->
+                <div class="mb-2 text-center" ng-if="regData.confirm_password">
+                    <small class="text-danger fw-bold" ng-if="regData.password !== regData.confirm_password">
+                        <i class="bi bi-x-circle"></i> Passwords do not match
+                    </small>
+                    <small class="text-success fw-bold" ng-if="regData.password === regData.confirm_password && regData.password">
+                        <i class="bi bi-check-circle"></i> Passwords match
+                    </small>
+                </div>
+                
+                <!-- DYNAMIC ERROR MESSAGE BLOCK -->
+                <!-- Only shows if password exists AND there is at least one error -->
+                <div class="alert alert-light border border-danger p-2 mb-4" 
+                     ng-show="regData.password && (regData.password.length < 8 || !regData.password.match('[A-Z]') || !regData.password.match('[a-z]') || !regData.password.match('[0-9]'))">
+                    
+                    <small class="fw-bold text-danger d-block mb-1">Missing Requirements:</small>
+                    
+                    <!-- Line 1: Length -->
+                    <div class="text-danger small" ng-show="regData.password.length < 8">
+                        <i class="bi bi-dot"></i> Must be at least 8 characters
+                    </div>
+                    
+                    <!-- Line 2: Case -->
+                    <div class="text-danger small" ng-show="!regData.password.match('[A-Z]') || !regData.password.match('[a-z]')">
+                        <i class="bi bi-dot"></i> Must have Uppercase & Lowercase
+                    </div>
+                    
+                    <!-- Line 3: Number -->
+                    <div class="text-danger small" ng-show="!regData.password.match('[0-9]')">
+                        <i class="bi bi-dot"></i> Must contain a Number
+                    </div>
+                </div>
+
+                <button type="submit" class="btn-success-custom w-100 rounded" ng-disabled="regForm.$invalid || regData.password !== regData.confirm_password">Register</button>
             </form>
+            
             <div class="text-center mt-3 small">
                 Already have an account? <a href="login.html" class="text-success fw-bold">Login</a>
             </div>
-            <!-- ADDED: Back Link -->
             <div class="text-center mt-3 pt-3 border-top">
                 <a href="index.html" class="text-secondary small text-decoration-none"><i class="bi bi-arrow-left"></i> Back to Home</a>
             </div>
@@ -1256,6 +1667,7 @@
 ## File: frontend/app.js
 ```js
 # Path: frontend/app.js
+
 // Path: frontend/app.js
 var app = angular.module('userApp', []);
 
@@ -1289,7 +1701,7 @@ app.directive('fileread', [function () {
 }]);
 
 // --- 1. GLOBAL SESSION MANAGER & HELPERS ---
-app.run(function($window, $rootScope, API_CONFIG) {
+app.run(function($window, $rootScope, $timeout, API_CONFIG) {
     // Session Check
     $rootScope.checkSession = function() {
         var user = $window.sessionStorage.getItem('currentUser');
@@ -1310,28 +1722,42 @@ app.run(function($window, $rootScope, API_CONFIG) {
     $rootScope.getImageUrl = function(item) {
         if (!item) return null;
         
-        // 1. Check if user uploaded a specific image or master image exists
-        var img = item.image || item.productImage;
+        // 1. Check if user uploaded a specific image, master image, or profile image exists
+        var img = item.image || item.productImage || item.profile_image;
         if (!img) return null;
         
         // 2. If it's already a full URL (http/https), return as is
         if (img.startsWith('http')) return img;
         
         // 3. Otherwise, prepend backend URL from Config
-        // Remove trailing slash from config if image has leading slash to avoid double //
         var baseUrl = API_CONFIG.url.endsWith('/') ? API_CONFIG.url.slice(0, -1) : API_CONFIG.url;
         var imgPath = img.startsWith('/') ? img : '/' + img;
         
         return baseUrl + imgPath;
     };
 
+    // --- TOAST NOTIFICATION SYSTEM ---
+    $rootScope.toasts = [];
+    $rootScope.showToast = function(message, type) {
+        // type: 'success', 'error', 'info'
+        var newToast = { message: message, type: type || 'info', id: Date.now() };
+        $rootScope.toasts.push(newToast);
+        
+        // Remove toast after 3 seconds
+        $timeout(function() {
+            var index = $rootScope.toasts.indexOf(newToast);
+            if (index > -1) $rootScope.toasts.splice(index, 1);
+        }, 3000);
+    };
+
     $rootScope.checkSession();
 });
 
-// --- 2. MARKETPLACE CONTROLLER (HOME) ---
+// --- 2. MARKETPLACE CONTROLLER (HOME PAGE) ---
 app.controller('MarketplaceCtrl', function ($scope, $http, $window, $q, API_CONFIG) {
     $scope.searchText = ""; 
-    
+    $scope.homeSections = []; // Dynamic Sections
+
     $scope.goToMarket = function() {
         $window.location.href = 'market.html?q=' + encodeURIComponent($scope.searchText);
     };
@@ -1340,60 +1766,94 @@ app.controller('MarketplaceCtrl', function ($scope, $http, $window, $q, API_CONF
         $window.location.href = 'product_detail.html?id=' + p.id + '&type=' + p.type;
     };
 
+    // ... (Keep loadWeather and initChart functions as they are) ...
+
+    // FETCH DATA DYNAMICALLY
+    var catRequest = $http.get(API_CONFIG.url + "category/");
     var sellRequest = $http.get(API_CONFIG.url + "product_sell/");
     var buyRequest = $http.get(API_CONFIG.url + "product_buy/");
 
-    $q.all([sellRequest, buyRequest]).then(function (results) {
-        var sales = results[0].data.map(function(item) { item.type = 'sell'; return item; });
-        var buys = results[1].data.map(function(item) { 
+    $q.all([catRequest, sellRequest, buyRequest]).then(function (results) {
+        var categories = results[0].data;
+        var sales = results[1].data.map(function(item) { item.type = 'sell'; return item; });
+        var buys = results[2].data.map(function(item) { 
             item.type = 'buy';
-            // FIX: If name is 'General', prefer the productName (e.g. Red Onion)
             var label = (item.name === 'General' && item.productName) ? item.productName : (item.name || item.productName || "General Item");
             item.productName = "Wanted: " + label;
             return item;
         });
 
         var allItems = sales.concat(buys);
-        organizeProductsForHome(allItems);
+        organizeProductsForHome(categories, allItems);
     });
 
-    function organizeProductsForHome(products) {
-        var sections = [
-            { id: 'veg', title: 'Fresh Vegetables', keywords: ['onion', 'potato', 'tomato', 'veg', 'carrot'], items: [] },
-            { id: 'fruit', title: 'Organic Fruits', keywords: ['apple', 'mango', 'banana', 'fruit', 'grape'], items: [] },
-            { id: 'grain', title: 'Grains & Pulses', keywords: ['rice', 'wheat', 'corn', 'maize', 'dal'], items: [] }
-        ];
-
-        products.forEach(function(p) {
-            // Search in both Master Name and User Defined Name
-            var name = (p.productName || "").toLowerCase() + " " + (p.name || "").toLowerCase();
-            for (var i = 0; i < sections.length; i++) {
-                if (sections[i].keywords.some(function(k) { return name.includes(k); })) {
-                    sections[i].items.push(p);
-                    break;
-                }
-            }
+    function organizeProductsForHome(categories, products) {
+        // Create a section for EVERY category from the database
+        $scope.homeSections = categories.map(function(cat) {
+            return {
+                id: cat.id,
+                title: cat.name,
+                items: products.filter(function(p) {
+                    // Match Product Category ID to Current Category ID
+                    return p.category == cat.id; 
+                })
+            };
         });
-        $scope.homeSections = sections;
+
+        // Filter out empty sections so the homepage looks clean
+        $scope.homeSections = $scope.homeSections.filter(function(sec) {
+            return sec.items.length > 0;
+        });
     }
 });
 
-// --- 3. MARKET CONTROLLER (SEARCH PAGE) ---
+// --- 3. MARKET CONTROLLER (SEARCH & FILTERS) ---
 app.controller('MarketCtrl', function ($scope, $http, $q, $window, API_CONFIG) {
-    // 1. Initial State: 'sell' is selected by default
-    $scope.filters = { type: 'sell', search: '', location: '' };
+    // Filters with Min/Max Price, Category, Product
+    $scope.filters = { 
+        type: 'sell', 
+        search: '', 
+        location: '', 
+        minPrice: null, 
+        maxPrice: null,
+        categoryId: null,
+        productId: null
+    };
+
     $scope.locations = []; 
     $scope.allItems = [];
     $scope.filteredItems = [];
+    $scope.categories = [];
+    $scope.masterProducts = [];
 
+    // 1. Fetch Categories
+    $http.get(API_CONFIG.url + "category/").then(function(res){ 
+        $scope.categories = res.data; 
+    });
+
+    // 2. Fetch Master Products (For Product Filter)
+    $http.get(API_CONFIG.url + "product/").then(function(res){ 
+        $scope.masterProducts = res.data; 
+    });
+
+    // 3. Handle URL Params
     var urlParams = new URLSearchParams(window.location.search);
     var categoryId = urlParams.get('category_id'); 
     var searchQuery = urlParams.get('q'); 
+    var categoryName = urlParams.get('cat');
+
     if(searchQuery) $scope.filters.search = searchQuery;
-    
+    // Map Category Name to ID if passed via URL
+    if(categoryName) {
+        $scope.filters.search = categoryName; 
+        // Note: Ideally we map name->id here if we want strict category filtering
+    }
+    if(categoryId) $scope.filters.categoryId = parseInt(categoryId);
+
     var config = {};
     if (categoryId) config.params = { category_id: categoryId };
 
+    // 4. Fetch All Items
     var sellReq = $http.get(API_CONFIG.url + "product_sell/", config);
     var buyReq = $http.get(API_CONFIG.url + "product_buy/", config);
 
@@ -1401,56 +1861,66 @@ app.controller('MarketCtrl', function ($scope, $http, $q, $window, API_CONFIG) {
         var sales = results[0].data.map(function(i) { i.type = 'sell'; i.trusted = true; return i; });
         var buys = results[1].data.map(function(i) { 
             i.type = 'buy'; 
-            
-            // --- FIX FOR "GENERAL" NAME ISSUE ---
-            // If master product exists (e.g. Red Onion), prefer that over "General".
             var displayLabel = (i.name === 'General' && i.productName) ? i.productName : (i.name || i.productName || "General");
-            
-            // Format the string for display
             i.productName = "Wanted: " + displayLabel;
-            
-            // Important: Set name to null if it's 'General' so the HTML {{item.name || item.productName}} 
-            // fallback mechanism picks up our new fancy productName string.
             if(i.name === 'General') i.name = null;
-
             return i; 
         });
 
         $scope.allItems = sales.concat(buys);
         
-        // Populate Location Filter
+        // Populate Location Datalist
         var lSet = new Set();
         $scope.allItems.forEach(function(item) {
             if(item.location) lSet.add(item.location.trim());
         });
         $scope.locations = Array.from(lSet).sort();
 
-        // FIX: Apply filters immediately so the list respects 'sell' selection on load
         $scope.applyFilters();
     });
 
     $scope.resetFilters = function() {
-        $window.location.href = "market.html";
+        $scope.filters = { 
+            type: 'sell', 
+            search: '', 
+            location: '', 
+            minPrice: null, 
+            maxPrice: null,
+            categoryId: null,
+            productId: null
+        };
+        $scope.applyFilters();
     };
 
     $scope.applyFilters = function() {
         var f = $scope.filters;
-        var term = f.search.toLowerCase();
+        var term = (f.search || "").toLowerCase();
 
         $scope.filteredItems = $scope.allItems.filter(function(item) {
-            // Filter by Type
+            // 1. Listing Type
             if (f.type !== 'all' && f.type && item.type !== f.type) return false;
             
-            // Filter by Search (Master Name, User Name, Location)
+            // 2. Category Filter
+            if (f.categoryId && item.category != f.categoryId) return false;
+
+            // 3. Product Filter
+            // Note: Buy requests might check against 'product' ID if linked, 
+            // otherwise text search handles general requests.
+            if (f.productId && item.product != f.productId) return false;
+
+            // 4. Text Search (Name or Location)
             var nameStr = (item.productName || "") + " " + (item.name || "");
-            
             var textMatch = (nameStr.toLowerCase().includes(term)) || 
                             (item.location && item.location.toLowerCase().includes(term));
-            
             if (!textMatch) return false;
             
-            // Filter by Location
-            if (f.location && item.location !== f.location) return false;
+            // 5. Location Filter (Exact or Partial)
+            if (f.location && !item.location.toLowerCase().includes(f.location.toLowerCase())) return false;
+
+            // 6. Price Range
+            if (f.minPrice !== null && f.minPrice !== "" && item.price < f.minPrice) return false;
+            if (f.maxPrice !== null && f.maxPrice !== "" && item.price > f.maxPrice) return false;
+
             return true;
         });
     };
@@ -1476,6 +1946,9 @@ app.controller('ProductDetailCtrl', function ($scope, $http, $window, $rootScope
         $http.get(API_CONFIG.url + endpoint + id + "/").then(function (res) {
             $scope.product = res.data;
             $scope.product.type = type;
+            // Default unit
+            if(!$scope.product.unit) $scope.product.unit = 'kg';
+
             if ($rootScope.currentUser && $scope.product.customer == $rootScope.currentUser.id) {
                 $scope.isOwner = true;
             }
@@ -1492,14 +1965,20 @@ app.controller('ProductDetailCtrl', function ($scope, $http, $window, $rootScope
 
     $scope.placeBid = function() {
         if (!$rootScope.currentUser) {
-            alert("Please login to place a bid.");
-            window.location.href = "login.html";
+            $rootScope.showToast("Please login to place a bid.", "error");
             return;
         }
         if ($scope.isOwner) {
-            alert("You cannot bid on your own post.");
+            $rootScope.showToast("You cannot bid on your own post.", "error");
             return;
         }
+        
+        // Frontend Check for Quantity
+        if($scope.bid.quantity > $scope.product.quantity) {
+             $rootScope.showToast("Bid quantity cannot exceed available stock (" + $scope.product.quantity + ")", "error");
+             return;
+        }
+
         var bidData = {
             bidder: $rootScope.currentUser.id,
             amount: $scope.bid.amount,
@@ -1511,10 +1990,13 @@ app.controller('ProductDetailCtrl', function ($scope, $http, $window, $rootScope
         else bidData.sell_post = id;
 
         $http.post(API_CONFIG.url + "product_bid/", bidData).then(function() {
-            alert("Bid Placed Successfully!");
-            $scope.bid = { quantity: 1, amount: "", message: "" }; // Reset form
+            $rootScope.showToast("Bid Placed Successfully!", "success");
+            $scope.bid = { quantity: 1, amount: "", message: "" };
             loadBids();
-        }, function() { alert("Error placing bid. Please try again."); });
+        }, function(err) { 
+            var msg = err.data.error || "Error placing bid.";
+            $rootScope.showToast(msg, "error"); 
+        });
     };
 
     $scope.updateBidStatus = function(bid, status) {
@@ -1524,34 +2006,83 @@ app.controller('ProductDetailCtrl', function ($scope, $http, $window, $rootScope
     };
 });
 
-// --- 5. CATEGORY PAGE ---
-app.controller('CategoryPageCtrl', function ($scope, $http, $window, API_CONFIG) {
+// Path: frontend/app.js (inside your main app.js file)
+
+// ... (Keep the code before this as is)
+
+// --- 5. CATEGORY PAGE CONTROLLER (UPDATED) ---
+app.controller('CategoryPageCtrl', function($scope, $http, $window, $q, API_CONFIG) {
     $scope.categories = [];
-    $http.get(API_CONFIG.url + "category/").then(function (res) {
-        $scope.categories = res.data;
+    $scope.searchQuery = "";
+
+    // 1. Fetch Categories AND Master Products from Backend
+    // This fetches the full list: Vegetables, Fruits, Grains, Spices, Commercial, Others, etc.
+    var catReq = $http.get(API_CONFIG.url + "category/");
+    var prodReq = $http.get(API_CONFIG.url + "product/"); // To populate search tags
+
+    $q.all([catReq, prodReq]).then(function(results) {
+        $scope.categories = results[0].data;
+        var masterProducts = results[1].data;
+
+        // Map sample products to categories for the search feature
+        $scope.categories.forEach(function(cat) {
+            cat.productList = masterProducts
+                .filter(function(p) { return p.category == cat.id; })
+                .map(function(p) { return p.productName; });
+        });
     });
+
+    // 2. Dynamic Filter Function
+    $scope.categoryFilter = function(cat) {
+        if (!$scope.searchQuery) return true;
+        var query = $scope.searchQuery.toLowerCase();
+        
+        var nameMatch = cat.name.toLowerCase().indexOf(query) !== -1;
+        var productMatch = false;
+        
+        if (cat.productList && cat.productList.length > 0) {
+            productMatch = cat.productList.some(function(product) {
+                return product.toLowerCase().indexOf(query) !== -1;
+            });
+        }
+        return nameMatch || productMatch;
+    };
+
+    // 3. Updated Icons to include New Categories
     $scope.getCategoryIcon = function(name) {
         var n = (name || "").toLowerCase();
-        if (n.includes("veg")) return "bi-flower3";
-        if (n.includes("fruit")) return "bi-apple";
-        if (n.includes("grain")) return "bi-cloud-haze2"; 
-        return "bi-box-seam";
+        if(n.includes('veg')) return 'bi-carrot';
+        if(n.includes('fruit')) return 'bi-apple';
+        if(n.includes('grain')) return 'bi-flower1';
+        if(n.includes('dairy')) return 'bi-droplet';
+        if(n.includes('spice')) return 'bi-stars';       // Spices
+        if(n.includes('commercial')) return 'bi-briefcase'; // Commercial
+        if(n.includes('other')) return 'bi-grid';        // Others
+        return 'bi-box-seam'; // Default
     };
+
     $scope.goToMarket = function(cat) {
-        $window.location.href = 'market.html?category_id=' + cat.id;
+        // Pass Category ID for better filtering
+        $window.location.href = 'market.html?category_id=' + cat.id + '&cat=' + cat.name;
     };
 });
-
+// ... (Keep the rest of app.js)
 // --- 6. AUTH CONTROLLER ---
-app.controller('AuthCtrl', function ($scope, $http, $window, API_CONFIG) {
+app.controller('AuthCtrl', function ($scope, $http, $window, $rootScope, API_CONFIG) {
     $scope.loginData = {};
     $scope.regData = {};
+    $scope.showPassword = false; 
+
+    $scope.togglePassword = function() {
+        $scope.showPassword = !$scope.showPassword;
+    };
 
     $scope.loginCustomer = function () {
         $http.post(API_CONFIG.url + "customer/login/", $scope.loginData).then(function (res) {
             $window.sessionStorage.setItem('currentUser', JSON.stringify(res.data));
+            $rootScope.showToast("Welcome back!", "success");
             $window.location.href = 'customer_dashboard.html';
-        }, function() { alert("Invalid Credentials"); });
+        }, function() { $rootScope.showToast("Invalid Credentials", "error"); });
     };
 
     $scope.loginAdmin = function () {
@@ -1560,31 +2091,80 @@ app.controller('AuthCtrl', function ($scope, $http, $window, API_CONFIG) {
             admin.role = 'admin';
             $window.sessionStorage.setItem('currentUser', JSON.stringify(admin));
             $window.location.href = 'admin_dashboard.html';
-        }, function() { alert("Access Denied"); });
+        }, function() { $rootScope.showToast("Access Denied", "error"); });
     };
 
     $scope.register = function () {
-        if ($scope.regData.password !== $scope.regData.confirm_password) {
-            alert("Passwords do not match!");
+        var p1 = ($scope.regData.password || "").trim();
+        var p2 = ($scope.regData.confirm_password || "").trim();
+
+        if (p1 !== p2) {
+            $rootScope.showToast("Passwords do not match!", "error");
             return;
         }
+
+        var passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)[A-Za-z\d@$!%*?&]{8,}$/;
+        if(!passwordRegex.test(p1)) {
+            $rootScope.showToast("Password must contain 8+ chars, uppercase, lowercase, and a number.", "error");
+            return;
+        }
+
         var payload = angular.copy($scope.regData);
+        payload.password = p1; 
         delete payload.confirm_password;
 
         $http.post(API_CONFIG.url + "customer/", payload).then(function () {
             alert("Registration Successful! Please Login.");
             $window.location.href = 'login.html';
         }, function(err) { 
-            var msg = err.data.email ? "Email already exists." : "Registration Failed.";
-            alert(msg); 
+            var msg = err.data.error || (err.data.email ? "Email already exists." : "Registration Failed.");
+            $rootScope.showToast(msg, "error"); 
         });
     };
 });
 
+// ... existing code ...
+
 // --- 7. PLAN CONTROLLER ---
-app.controller('PlanCtrl', function ($scope, $http, API_CONFIG) {
-    $http.get(API_CONFIG.url + "plan/").then(function(res){ $scope.plans = res.data; });
+app.controller('PlanCtrl', function ($scope, $http, $rootScope, $window, API_CONFIG) {
+    // $http.get(API_CONFIG.url + "plan/").then(function(res){ $scope.plans = res.data; });
+
+    $scope.buyPlan = function(tier, planName) {
+        if(!$rootScope.currentUser) {
+            $rootScope.showToast("Please login to purchase a plan.", "error");
+            $window.location.href = 'login.html';
+            return;
+        }
+
+        // Simulating Payment Gateway interaction
+        var confirmPurchase = confirm("Confirm purchase of " + planName + "?\n\n(This is a demo, no actual charge will occur)");
+        
+        if(confirmPurchase) {
+            // Update User Tier in Backend
+            var userId = $rootScope.currentUser.id;
+            
+            $http.put(API_CONFIG.url + "customer/" + userId + "/", { plan_tier: tier })
+                .then(function(res) {
+                    $rootScope.showToast("Plan Upgraded to " + planName + "!", "success");
+                    
+                    // Update Local Session
+                    var updatedUser = res.data;
+                    $window.sessionStorage.setItem('currentUser', JSON.stringify(updatedUser));
+                    $rootScope.currentUser = updatedUser;
+                    
+                    // Redirect to Dashboard
+                    setTimeout(function() {
+                        $window.location.href = 'customer_dashboard.html';
+                    }, 1000);
+
+                }, function(err) {
+                    $rootScope.showToast("Purchase Failed. Try again.", "error");
+                });
+        }
+    };
 });
+
+// ... rest of existing code ...
 
 // --- 8. ADMIN DASHBOARD CONTROLLER ---
 app.controller('AdminDashCtrl', function ($scope, $http, $window, API_CONFIG) {
@@ -1741,7 +2321,7 @@ app.controller('AdminDashCtrl', function ($scope, $http, $window, API_CONFIG) {
 
 // --- 9. POST SELL LISTING ---
 app.controller('ProductSellCtrl', function ($scope, $http, $rootScope, $window, API_CONFIG) { 
-    $scope.product_sell = {};
+    $scope.product_sell = { unit: 'kg' }; // Default to kg
     $scope.categories = []; 
     $scope.productsList = []; 
     $scope.isSubmitting = false;
@@ -1756,20 +2336,27 @@ app.controller('ProductSellCtrl', function ($scope, $http, $rootScope, $window, 
 
     $scope.saveProductSell = function() {
         if(!$rootScope.currentUser) {
-            alert("Please login.");
+            $rootScope.showToast("Please login.", "error");
             $window.location.href = "login.html";
             return;
         }
         $scope.isSubmitting = true;
+
         $scope.product_sell.customer = $rootScope.currentUser.id;
         $scope.product_sell.sellerName = $rootScope.currentUser.name;
         $scope.product_sell.phoneNo = $rootScope.currentUser.phone;
 
         $http.post(API_CONFIG.url + "product_sell/", $scope.product_sell).then(function(){ 
-            alert("Success! Your produce is listed.");
+            $rootScope.showToast("Success! Your produce is listed.", "success");
             $window.location.href = "customer_dashboard.html"; 
         }, function(err){ 
-            alert("Error posting product. Check your connection or image size."); 
+            // Handle Plan Limit Error Specifically
+            if (err.status === 402) {
+                $rootScope.showToast(err.data.error, "error");
+                setTimeout(function(){ $window.location.href = 'plan.html'; }, 3000);
+            } else {
+                $rootScope.showToast("Error posting product: " + (err.data.error || "Unknown"), "error"); 
+            }
             $scope.isSubmitting = false;
         });
     };
@@ -1777,9 +2364,9 @@ app.controller('ProductSellCtrl', function ($scope, $http, $rootScope, $window, 
 
 // --- 10. POST BUY REQUEST ---
 app.controller('ProductBuyCtrl', function ($scope, $http, $rootScope, $window, API_CONFIG) { 
-    $scope.product_buy = {};
+    $scope.product_buy = { unit: 'kg' }; // Default
     $scope.categories = []; 
-    $scope.productsList = [];
+    $scope.productsList = []; 
     $scope.isSubmitting = false;
 
     $http.get(API_CONFIG.url + "category/").then(function(res){ $scope.categories = res.data; });
@@ -1792,7 +2379,7 @@ app.controller('ProductBuyCtrl', function ($scope, $http, $rootScope, $window, A
 
     $scope.saveProductBuy = function() {
         if(!$rootScope.currentUser) {
-            alert("Please login.");
+            $rootScope.showToast("Please login.", "error");
             $window.location.href = "login.html";
             return;
         }
@@ -1800,10 +2387,10 @@ app.controller('ProductBuyCtrl', function ($scope, $http, $rootScope, $window, A
         $scope.product_buy.customer = $rootScope.currentUser.id;
         
         $http.post(API_CONFIG.url + "product_buy/", $scope.product_buy).then(function(){ 
-            alert("Request Posted!");
+            $rootScope.showToast("Request Posted!", "success");
             $window.location.href = "customer_dashboard.html";
         }, function(err){ 
-            alert("Error posting request."); 
+            $rootScope.showToast("Error posting request.", "error"); 
             $scope.isSubmitting = false;
         });
     };
@@ -1823,14 +2410,12 @@ app.controller('UserCtrl', function ($scope, $http, $window, API_CONFIG) {
 
     $scope.saveUser = function() {
         if ($scope.user.id) {
-            // Edit Mode
             $http.put(API_CONFIG.url + "user/" + $scope.user.id + "/", $scope.user).then(function() {
                 alert("Admin updated!");
                 $scope.user = {};
                 loadUsers();
             }, function(err) { alert("Error updating admin."); });
         } else {
-            // Create Mode
             if(!$scope.user.password) {
                 alert("Password is required for new admins.");
                 return;
@@ -1856,7 +2441,53 @@ app.controller('UserCtrl', function ($scope, $http, $window, API_CONFIG) {
         }
     };
 });
+// =======================================================
+// ✅ PROFILE CONTROLLER
+// =======================================================
+app.controller('ProfileCtrl', function ($scope, $http, $window, $rootScope, API_CONFIG) {
+    // 1. Check if user is logged in
+    if(!$rootScope.currentUser) {
+        $window.location.href = 'login.html';
+        return;
+    }
 
+    // 2. Load current data into the form (Copy prevents live editing of the navbar name)
+    $scope.profile = angular.copy($rootScope.currentUser);
+    
+    // Remove password field for security
+    delete $scope.profile.password; 
+
+    // 3. Update Function
+    $scope.updateProfile = function() {
+        var userId = $rootScope.currentUser.id;
+        
+        // Prepare Payload
+        var payload = {
+            name: $scope.profile.name,
+            phone: $scope.profile.phone,
+            address: $scope.profile.address,
+            email: $scope.profile.email 
+        };
+
+        // If a new image was selected (base64 string), add it
+        if ($scope.profile.newImage) {
+            payload.profile_image = $scope.profile.newImage; 
+        }
+
+        // Send PUT Request
+        $http.put(API_CONFIG.url + "customer/" + userId + "/", payload).then(function(res) {
+            $rootScope.showToast("Profile Updated Successfully!", "success");
+            
+            // Update Session Storage with new data (so navbar updates on refresh)
+            var updatedUser = res.data;
+            $window.sessionStorage.setItem('currentUser', JSON.stringify(updatedUser));
+            $rootScope.currentUser = updatedUser;
+            
+        }, function(err) {
+            $rootScope.showToast("Update Failed: " + (err.data.error || "Server Error"), "error");
+        });
+    };
+});
 // --- 12. CUSTOMER DASHBOARD CONTROLLER ---
 app.controller('CustomerDashCtrl', function ($scope, $http, $rootScope, $window, API_CONFIG) {
     $scope.activeTab = 'sell';
@@ -1909,8 +2540,23 @@ app.controller('CustomerDashCtrl', function ($scope, $http, $rootScope, $window,
     };
 
     $scope.updateBid = function(bid, status) {
-        $http.put(API_CONFIG.url + "product_bid/" + bid.id + "/", { status: status }).then(function() {
+        // Optimistic UI update not safe here due to Race Conditions checks on backend
+        // We wait for response
+        $http.put(API_CONFIG.url + "product_bid/" + bid.id + "/", { status: status }).then(function(res) {
             bid.status = status;
+            $rootScope.showToast("Bid Updated Successfully!", "success");
+            
+            // Reload data to reflect new inventory counts if Accepted
+            if(status === 'ACCEPTED') loadData();
+            
+        }, function(err) {
+            if(err.status === 409) {
+                // Conflict: Race Condition / Insufficient Stock
+                $rootScope.showToast("Stock Insufficient! " + err.data.error, "error");
+                bid.status = 'INVALID'; // Update local state to reflect backend reality
+            } else {
+                $rootScope.showToast("Error updating bid.", "error");
+            }
         });
     };
 
@@ -1921,11 +2567,34 @@ app.controller('CustomerDashCtrl', function ($scope, $http, $rootScope, $window,
         
         $http.delete(API_CONFIG.url + endpoint + id + "/?customer=" + $rootScope.currentUser.id)
             .then(function() {
-                alert("Listing deleted.");
+                $rootScope.showToast("Listing deleted.", "info");
                 loadData(); 
             }, function(err) {
-                alert("Error deleting: " + (err.data.error || "Server Error"));
+                $rootScope.showToast("Error deleting: " + (err.data.error || "Server Error"), "error");
             });
+    };
+
+    // --- PROFILE IMAGE UPLOAD ---
+    $scope.profileUpdate = {};
+    
+    $scope.updateProfileImage = function() {
+        if(!$scope.profileUpdate.image) {
+            $rootScope.showToast("Please select an image first", "error");
+            return;
+        }
+        
+        var payload = { profile_image: $scope.profileUpdate.image };
+        
+        $http.put(API_CONFIG.url + "customer/" + $rootScope.currentUser.id + "/", payload).then(function(res) {
+            $rootScope.showToast("Profile Picture Updated!", "success");
+            // Update Session Storage
+            var updatedUser = res.data;
+            $window.sessionStorage.setItem('currentUser', JSON.stringify(updatedUser));
+            $rootScope.currentUser = updatedUser;
+            $scope.profileUpdate = {}; // Reset
+        }, function(err) {
+            $rootScope.showToast("Update Failed", "error");
+        });
     };
     
     $scope.logout = function() {
@@ -1950,12 +2619,43 @@ app.controller('CustomerDashCtrl', function ($scope, $http, $rootScope, $window,
     <link href="css/styles.css" rel="stylesheet">
     <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.8.2/angular.min.js"></script>
     <script src="app.js"></script>
+    <style>
+        /* Modern Card Styling - No Badge */
+        .card-hover {
+            transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+            border-radius: 12px;
+            overflow: hidden;
+            background: #fff;
+            border: 1px solid rgba(0,0,0,0.08);
+        }
+        .card-hover:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.08) !important;
+        }
+        .prod-img-wrap {
+            height: 220px;
+            position: relative;
+            background: #fdfdfd;
+        }
+        .prod-img-wrap img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        .search-overlap {
+            margin-top: -40px;
+            position: relative;
+            z-index: 10;
+        }
+        .text-success-custom {
+            color: #2E7D32;
+        }
+    </style>
 </head>
 <body ng-controller="MarketplaceCtrl">
 
     <div ng-include="'components/navbar.html'" ng-init="activePage='home'"></div>
 
-    <!-- HERO CAROUSEL -->
     <div id="heroCarousel" class="carousel slide carousel-fade hero-wrapper" data-bs-ride="carousel">
         <div class="carousel-indicators">
             <button type="button" data-bs-target="#heroCarousel" data-bs-slide-to="0" class="active"></button>
@@ -1963,61 +2663,59 @@ app.controller('CustomerDashCtrl', function ($scope, $http, $rootScope, $window,
         </div>
         <div class="carousel-inner">
             <div class="carousel-item active">
-                <img src="https://images.unsplash.com/photo-1500382017468-9049fed747ef?q=80&w=1932&auto=format&fit=crop" class="d-block w-100" alt="Farm">
-                <div class="carousel-caption d-none d-md-block">
-                    <h1>Cultivating Trust</h1>
-                    <p class="fs-4 text-light opacity-90">Direct marketplace connecting farmers and buyers.</p>
+                <img src="https://images.unsplash.com/photo-1500382017468-9049fed747ef?q=80&w=1932" class="d-block w-100" alt="Farm">
+                <div class="carousel-caption d-none d-md-block text-start">
+                    <h1 class="display-3 fw-bold">Cultivating Trust</h1>
+                    <p class="fs-4">Direct marketplace connecting farmers and buyers.</p>
                 </div>
             </div>
             <div class="carousel-item">
-                <img src="https://images.unsplash.com/photo-1605000797499-95a05f526b72?q=80&w=1932&auto=format&fit=crop" class="d-block w-100" alt="Tractor">
-                <div class="carousel-caption d-none d-md-block">
-                    <h1>Fair & Transparent</h1>
-                    <p class="fs-4 text-light opacity-90">Get the best price for your hard work.</p>
+                <img src="https://images.unsplash.com/photo-1605000797499-95a05f526b72?q=80&w=1932" class="d-block w-100" alt="Tractor">
+                <div class="carousel-caption d-none d-md-block text-start">
+                    <h1 class="display-3 fw-bold">Fair & Transparent</h1>
+                    <p class="fs-4">Get the best price for your hard work.</p>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- SEARCH OVERLAP -->
-    <div class="search-overlap">
-        <form class="search-box" ng-submit="goToMarket()">
+    <div class="container search-overlap">
+        <form class="search-box mx-auto" style="max-width: 800px;" ng-submit="goToMarket()">
             <i class="bi bi-search text-muted ms-3 fs-5"></i>
             <input type="text" class="search-input" ng-model="searchText" placeholder="Search for onions, wheat, apples...">
             <button type="submit" class="search-btn">Find Products</button>
         </form>
     </div>
 
-    <!-- MAIN SECTIONS -->
-    <div class="container py-5 mt-4">
+    <div class="container py-5 mt-3">
         
         <div ng-repeat="section in homeSections" ng-if="section.items.length > 0" class="mb-5">
             <div class="d-flex justify-content-between align-items-center mb-4">
                 <div>
-                    <h3 class="fw-bold mb-0">{{section.title}}</h3>
-                    <p class="text-muted small m-0">Fresh from the harvest</p>
+                    <h3 class="fw-bold mb-0 text-dark">{{section.title}}</h3>
+                    <p class="text-muted small m-0">Freshly harvested by local farmers</p>
                 </div>
-                <a href="market.html?cat={{section.title}}" class="btn btn-outline-custom rounded-pill btn-sm">View All <i class="bi bi-arrow-right"></i></a>
+                <a href="market.html?cat={{section.title}}" class="btn btn-outline-success rounded-pill px-4 btn-sm fw-bold">View All</a>
             </div>
 
             <div class="row g-4">
                 <div class="col-lg-3 col-md-4 col-sm-6" ng-repeat="p in section.items | limitTo:4">
-                    <div class="card-hover" ng-click="openProduct(p)" style="cursor: pointer;">
+                    <div class="card-hover h-100 shadow-sm" ng-click="openProduct(p)" style="cursor: pointer;">
                         <div class="prod-img-wrap">
-                             <div class="badge-float"><i class="bi bi-patch-check-fill"></i> Verified</div>
-                             <!-- If image exists -->
                              <img ng-if="getImageUrl(p)" ng-src="{{getImageUrl(p)}}" alt="{{p.productName}}">
-                             <!-- If no image -->
                              <div ng-if="!getImageUrl(p)" class="d-flex align-items-center justify-content-center h-100 text-muted bg-light">
                                 <i class="bi bi-image fs-1 opacity-25"></i>
                              </div>
                         </div>
-                        <div class="prod-body">
-                            <div class="prod-title">{{p.productName}}</div>
-                            <div class="prod-loc"><i class="bi bi-geo-alt-fill text-danger me-1"></i> {{p.location}}</div>
-                            <div class="d-flex justify-content-between align-items-end">
-                                <div class="prod-price">₹{{p.price}}</div>
-                                <div class="text-muted small fw-bold">{{p.quantity}} Units</div>
+                        
+                        <div class="p-3">
+                            <div class="fw-bold fs-5 text-dark text-truncate mb-1">{{p.productName}}</div>
+                            <div class="text-muted small mb-3">
+                                <i class="bi bi-geo-alt-fill text-danger me-1"></i> {{p.location}}
+                            </div>
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div class="text-success-custom fw-bold fs-4">₹{{p.price}}</div>
+                                <span class="badge bg-light text-dark border fw-normal">{{p.quantity}} Units</span>
                             </div>
                         </div>
                     </div>
@@ -2027,7 +2725,7 @@ app.controller('CustomerDashCtrl', function ($scope, $http, $rootScope, $window,
 
         <div class="text-center py-5" ng-if="homeSections.length === 0">
             <div class="spinner-border text-success" role="status"></div>
-            <p class="mt-3 text-muted fw-bold">Loading marketplace...</p>
+            <p class="mt-3 text-muted fw-bold">Loading Marketplace...</p>
         </div>
     </div>
 
@@ -2042,13 +2740,14 @@ app.controller('CustomerDashCtrl', function ($scope, $http, $rootScope, $window,
 ## File: frontend/plan.html
 ```html
 # Path: frontend/plan.html
+
 <!DOCTYPE html>
 <html lang="en" ng-app="userApp">
 <head>
     <meta charset="UTF-8">
     <title>Plans - Agrivendia</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
     <link href="css/styles.css" rel="stylesheet">
     <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.8.2/angular.min.js"></script>
     <script src="app.js"></script>
@@ -2057,22 +2756,78 @@ app.controller('CustomerDashCtrl', function ($scope, $http, $rootScope, $window,
     <div ng-include="'components/navbar.html'" ng-init="activePage='plan'"></div>
 
     <div class="container py-5">
-        <h1 class="text-center fw-bold mb-5">Membership Plans</h1>
+        <div class="text-center mb-5">
+            <h1 class="fw-bold">Choose Your Growth Plan</h1>
+            <p class="text-muted">Scale your business with our tailored memberships</p>
+        </div>
+
         <div class="row g-4 justify-content-center">
-            <div class="col-lg-4" ng-repeat="p in plans">
-                <div class="plan-card p-5 text-center h-100">
-                    <h3 class="fw-bold">{{p.name}}</h3>
-                    <div class="display-3 fw-bold text-success my-3">₹{{p.price}}</div>
-                    <p class="text-muted">per {{p.duration}}</p>
+            
+            <!-- FREE PLAN -->
+            <div class="col-xl-3 col-md-6">
+                <div class="card h-100 border-0 shadow-sm p-4 text-center">
+                    <h4 class="fw-bold text-secondary">Free Starter</h4>
+                    <div class="display-4 fw-bold text-dark my-3">₹0</div>
+                    <p class="text-muted">Lifetime Access</p>
                     <hr>
-                    <ul class="list-unstyled text-start mb-4">
-                        <li><i class="bi bi-check-circle-fill text-success me-2"></i> Unlimited Listings</li>
-                        <li><i class="bi bi-check-circle-fill text-success me-2"></i> Verified Badge</li>
-                        <li><i class="bi bi-check-circle-fill text-success me-2"></i> Priority Support</li>
+                    <ul class="list-unstyled text-start mb-4 mx-auto" style="max-width: 200px;">
+                        <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i> <strong>3</strong> Listings Limit</li>
+                        <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i> Basic Support</li>
+                        <li class="mb-2"><i class="bi bi-x-circle-fill text-muted me-2"></i> No Verified Badge</li>
                     </ul>
-                    <button class="btn btn-success-custom w-100 rounded-pill">Select Plan</button>
+                    <button class="btn btn-outline-secondary w-100 rounded-pill" disabled>Default Plan</button>
                 </div>
             </div>
+
+            <!-- GROWER BASIC -->
+            <div class="col-xl-3 col-md-6">
+                <div class="card h-100 border-success shadow p-4 text-center position-relative overflow-hidden">
+                    <div class="bg-success text-white position-absolute top-0 start-0 w-100 py-1 small fw-bold">POPULAR</div>
+                    <h4 class="fw-bold text-success mt-3">Grower Basic</h4>
+                    <div class="display-4 fw-bold text-success my-3">₹199</div>
+                    <p class="text-muted">Per Month</p>
+                    <hr>
+                    <ul class="list-unstyled text-start mb-4 mx-auto" style="max-width: 200px;">
+                        <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i> <strong>10</strong> Listings Limit</li>
+                        <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i> Priority Visibility</li>
+                        <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i> Verified Badge</li>
+                    </ul>
+                    <button class="btn btn-success w-100 rounded-pill" ng-click="buyPlan(2, 'Grower Basic')">Buy Now</button>
+                </div>
+            </div>
+
+            <!-- TRADER PRO -->
+            <div class="col-xl-3 col-md-6">
+                <div class="card h-100 border-0 shadow-sm p-4 text-center">
+                    <h4 class="fw-bold text-primary">Trader Pro</h4>
+                    <div class="display-4 fw-bold text-dark my-3">₹999</div>
+                    <p class="text-muted">6 Months</p>
+                    <hr>
+                    <ul class="list-unstyled text-start mb-4 mx-auto" style="max-width: 200px;">
+                        <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i> <strong>Unlimited</strong> Listings</li>
+                        <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i> Top Search Rank</li>
+                        <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i> Dedicated Manager</li>
+                    </ul>
+                    <button class="btn btn-outline-primary w-100 rounded-pill" ng-click="buyPlan(3, 'Trader Pro')">Buy Now</button>
+                </div>
+            </div>
+
+            <!-- ENTERPRISE -->
+            <div class="col-xl-3 col-md-6">
+                <div class="card h-100 border-0 bg-dark text-white shadow p-4 text-center">
+                    <h4 class="fw-bold text-warning">Enterprise</h4>
+                    <div class="display-6 fw-bold text-white my-3">Custom</div>
+                    <p class="text-white-50">Yearly Contracts</p>
+                    <hr class="border-secondary">
+                    <ul class="list-unstyled text-start mb-4 mx-auto" style="max-width: 200px;">
+                        <li class="mb-2"><i class="bi bi-check-circle-fill text-warning me-2"></i> <strong>Custom</strong> Limits</li>
+                        <li class="mb-2"><i class="bi bi-check-circle-fill text-warning me-2"></i> API Access</li>
+                        <li class="mb-2"><i class="bi bi-check-circle-fill text-warning me-2"></i> Direct Owner Support</li>
+                    </ul>
+                    <a href="mailto:sales@agrivendia.com?subject=Enterprise Inquiry" class="btn btn-warning w-100 rounded-pill fw-bold">Contact Sales</a>
+                </div>
+            </div>
+
         </div>
     </div>
     
@@ -2183,6 +2938,8 @@ app.controller('CustomerDashCtrl', function ($scope, $http, $rootScope, $window,
 ## File: frontend/product_sell.html
 ```html
 # Path: frontend/product_sell.html
+
+
 <!DOCTYPE html>
 <html lang="en" ng-app="userApp">
 <head>
@@ -2190,7 +2947,6 @@ app.controller('CustomerDashCtrl', function ($scope, $http, $rootScope, $window,
     <title>Post Sale - Agrivendia</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
     <link href="css/styles.css" rel="stylesheet">
     <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.8.2/angular.min.js"></script>
     <script src="app.js"></script>
@@ -2225,10 +2981,37 @@ app.controller('CustomerDashCtrl', function ($scope, $http, $rootScope, $window,
                     <label class="small fw-bold text-muted">Photo</label>
                     <input type="file" class="form-control" fileread="product_sell.image" accept="image/*">
                 </div>
+                
+                <!-- ✅ EXPANDED UNIT SELECTION -->
                 <div class="row g-3 mb-3">
-                    <div class="col-6"><label class="small fw-bold text-muted">Price (₹)</label><input type="number" class="form-control" ng-model="product_sell.price" required></div>
-                    <div class="col-6"><label class="small fw-bold text-muted">Qty</label><input type="number" class="form-control" ng-model="product_sell.quantity" required></div>
+                    <div class="col-md-4">
+                        <label class="small fw-bold text-muted">Unit</label>
+                        <select class="form-select" ng-model="product_sell.unit" required>
+                            <option value="kg">Kg (Kilograms)</option>
+                            <option value="ton">Ton (Metric Ton)</option>
+                            <option value="quintal">Quintal (100kg)</option>
+                            <option value="g">Grams</option>
+                            <option value="l">Litres</option>
+                            <option value="ml">Millilitres</option>
+                            <option value="box">Box</option>
+                            <option value="crate">Crate</option>
+                            <option value="dozen">Dozen</option>
+                            <option value="piece">Piece</option>
+                            <option value="bag">Bag/Sack</option>
+                            <option value="barrel">Barrel</option>
+                            <option value="bunch">Bunch</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                         <label class="small fw-bold text-muted">Price / Unit (₹)</label>
+                         <input type="number" class="form-control" ng-model="product_sell.price" min="1" required>
+                    </div>
+                    <div class="col-md-4">
+                         <label class="small fw-bold text-muted">Quantity</label>
+                         <input type="number" class="form-control" ng-model="product_sell.quantity" min="1" required>
+                    </div>
                 </div>
+
                 <div class="mb-3"><label class="small fw-bold text-muted">Location</label><input type="text" class="form-control" ng-model="product_sell.location" required></div>
                 <div class="mb-4"><label class="small fw-bold text-muted">Description</label><textarea class="form-control" rows="3" ng-model="product_sell.description"></textarea></div>
                 
@@ -2248,8 +3031,15 @@ app.controller('CustomerDashCtrl', function ($scope, $http, $rootScope, $window,
 ```css
 # Path: frontend/css/styles.css
 /* Path: frontend/css/styles.css */
+
+/* ===============================
+   GOOGLE FONT
+================================ */
 @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap');
 
+/* ===============================
+   ROOT VARIABLES
+================================ */
 :root {
     --primary: #2E7D32;
     --primary-dark: #1B5E20;
@@ -2258,12 +3048,17 @@ app.controller('CustomerDashCtrl', function ($scope, $http, $rootScope, $window,
     --dark: #2c3e50;
     --light: #f8f9fa;
     --text-muted: #6c757d;
+
     --shadow-sm: 0 2px 8px rgba(0,0,0,0.05);
     --shadow-md: 0 8px 24px rgba(0,0,0,0.08);
     --shadow-lg: 0 15px 35px rgba(0,0,0,0.1);
+
     --radius: 16px;
 }
 
+/* ===============================
+   GLOBAL
+================================ */
 body {
     font-family: 'Poppins', sans-serif;
     background-color: #f4f7f6;
@@ -2271,9 +3066,14 @@ body {
     -webkit-font-smoothing: antialiased;
 }
 
-a { text-decoration: none; transition: 0.3s; }
+a {
+    text-decoration: none;
+    transition: 0.3s;
+}
 
-/* --- NAVBAR --- */
+/* ===============================
+   NAVBAR
+================================ */
 .navbar {
     background: rgba(255, 255, 255, 0.95);
     backdrop-filter: blur(10px);
@@ -2285,7 +3085,6 @@ a { text-decoration: none; transition: 0.3s; }
     font-weight: 800;
     color: var(--primary) !important;
     font-size: 1.6rem;
-    letter-spacing: -0.5px;
 }
 
 .nav-link {
@@ -2296,7 +3095,8 @@ a { text-decoration: none; transition: 0.3s; }
     position: relative;
 }
 
-.nav-link:hover, .nav-link.active-link {
+.nav-link:hover,
+.nav-link.active-link {
     color: var(--primary) !important;
 }
 
@@ -2321,15 +3121,21 @@ a { text-decoration: none; transition: 0.3s; }
 
 .btn-nav-signup {
     background: var(--primary);
-    color: white;
+    color: #fff;
     font-weight: 600;
     padding: 8px 25px;
     border-radius: 50px;
-    box-shadow: 0 4px 15px rgba(46, 125, 50, 0.3);
+    box-shadow: 0 4px 15px rgba(46,125,50,0.3);
 }
-.btn-nav-signup:hover { background: var(--primary-dark); color: white; transform: translateY(-2px); }
 
-/* --- HERO & LANDING --- */
+.btn-nav-signup:hover {
+    background: var(--primary-dark);
+    transform: translateY(-2px);
+}
+
+/* ===============================
+   HERO / LANDING
+================================ */
 .hero-wrapper {
     position: relative;
     border-radius: 0 0 30px 30px;
@@ -2357,7 +3163,7 @@ a { text-decoration: none; transition: 0.3s; }
     text-shadow: 0 4px 20px rgba(0,0,0,0.5);
 }
 
-/* Floating Search Bar */
+/* Floating Search */
 .search-overlap {
     margin-top: -35px;
     position: relative;
@@ -2371,7 +3177,7 @@ a { text-decoration: none; transition: 0.3s; }
     border-radius: 50px;
     box-shadow: var(--shadow-lg);
     max-width: 750px;
-    margin: 0 auto;
+    margin: auto;
     display: flex;
     align-items: center;
 }
@@ -2382,7 +3188,6 @@ a { text-decoration: none; transition: 0.3s; }
     padding: 15px 25px;
     font-size: 1.1rem;
     outline: none;
-    border-radius: 50px;
 }
 
 .search-btn {
@@ -2392,18 +3197,21 @@ a { text-decoration: none; transition: 0.3s; }
     padding: 12px 35px;
     border-radius: 40px;
     font-weight: 600;
-    font-size: 1rem;
-    transition: 0.3s;
 }
-.search-btn:hover { background: var(--primary-dark); transform: scale(1.05); }
 
-/* --- CARDS --- */
+.search-btn:hover {
+    background: var(--primary-dark);
+    transform: scale(1.05);
+}
+
+/* ===============================
+   CARDS / PRODUCTS
+================================ */
 .card-hover {
     background: white;
-    border: none;
     border-radius: var(--radius);
     box-shadow: var(--shadow-sm);
-    transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+    transition: 0.3s;
     overflow: hidden;
     height: 100%;
 }
@@ -2413,11 +3221,9 @@ a { text-decoration: none; transition: 0.3s; }
     box-shadow: var(--shadow-lg);
 }
 
-/* Product Card Specifics */
 .prod-img-wrap {
     height: 220px;
     background: #f1f1f1;
-    position: relative;
     overflow: hidden;
 }
 
@@ -2428,134 +3234,191 @@ a { text-decoration: none; transition: 0.3s; }
     transition: 0.5s;
 }
 
-.card-hover:hover .prod-img-wrap img { transform: scale(1.1); }
+.card-hover:hover img {
+    transform: scale(1.1);
+}
 
 .badge-float {
     position: absolute;
     top: 15px;
     right: 15px;
-    background: rgba(255, 255, 255, 0.9);
-    backdrop-filter: blur(5px);
+    background: rgba(255,255,255,0.9);
     padding: 6px 14px;
     border-radius: 30px;
     font-size: 0.75rem;
     font-weight: 700;
     color: var(--primary);
-    z-index: 2;
-    box-shadow: 0 4px 10px rgba(0,0,0,0.1);
 }
 
-.prod-body { padding: 20px; }
-.prod-title { font-weight: 700; font-size: 1.15rem; color: var(--dark); margin-bottom: 5px; }
-.prod-price { color: var(--primary); font-size: 1.3rem; font-weight: 800; }
-.prod-loc { color: var(--text-muted); font-size: 0.9rem; margin-bottom: 15px; }
+.prod-body {
+    padding: 20px;
+}
 
-/* --- BUTTONS --- */
+.prod-title {
+    font-weight: 700;
+    font-size: 1.15rem;
+}
+
+.prod-price {
+    color: var(--primary);
+    font-size: 1.3rem;
+    font-weight: 800;
+}
+
+.prod-loc {
+    font-size: 0.9rem;
+    color: var(--text-muted);
+}
+
+/* ===============================
+   BUTTONS
+================================ */
 .btn-primary-custom {
-    background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+    background: linear-gradient(135deg, var(--primary), var(--primary-dark));
     border: none;
     color: white;
     padding: 12px 25px;
     border-radius: 10px;
     font-weight: 600;
-    transition: 0.3s;
-    box-shadow: 0 4px 15px rgba(46, 125, 50, 0.3);
+    box-shadow: 0 4px 15px rgba(46,125,50,0.3);
 }
+
 .btn-primary-custom:hover {
     transform: translateY(-2px);
-    box-shadow: 0 8px 20px rgba(46, 125, 50, 0.4);
-    color: white;
 }
 
 .btn-outline-custom {
-    background: transparent;
     border: 2px solid #e0e0e0;
-    color: #555;
-    border-radius: 10px;
     padding: 10px 20px;
+    border-radius: 10px;
     font-weight: 600;
 }
+
 .btn-outline-custom:hover {
     border-color: var(--primary);
     color: var(--primary);
     background: var(--primary-light);
 }
 
-/* --- FORMS --- */
-.form-control, .form-select {
+/* ===============================
+   FORMS
+================================ */
+.form-control,
+.form-select {
     border: 1px solid #e0e0e0;
     background: #fbfbfb;
     padding: 14px 20px;
     border-radius: 12px;
-    font-size: 0.95rem;
-    transition: 0.3s;
 }
-.form-control:focus, .form-select:focus {
-    background: white;
+
+.form-control:focus,
+.form-select:focus {
     border-color: var(--primary);
-    box-shadow: 0 0 0 4px rgba(46, 125, 50, 0.1);
+    box-shadow: 0 0 0 4px rgba(46,125,50,0.1);
 }
 
-/* --- DASHBOARD --- */
-.dash-sidebar {
-    background: white;
-    width: 280px;
-    height: 100vh;
-    position: fixed;
-    border-right: 1px solid #eee;
-    padding: 20px;
-}
-.stat-card {
-    background: white;
-    border-radius: 20px;
-    padding: 25px;
-    box-shadow: var(--shadow-sm);
-    border: 1px solid rgba(0,0,0,0.02);
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-}
-.stat-icon {
-    width: 60px;
-    height: 60px;
-    border-radius: 15px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 1.8rem;
-}
-
-/* --- LOGIN / AUTH --- */
+/* ===============================
+   AUTH (LOGIN / SIGNUP)
+================================ */
 .auth-bg {
-    background: linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%);
+    background: linear-gradient(135deg, #e8f5e9, #c8e6c9);
     min-height: 100vh;
     display: flex;
     align-items: center;
     justify-content: center;
 }
+
 .auth-card {
     background: white;
     padding: 40px;
     border-radius: 24px;
     box-shadow: var(--shadow-lg);
-    width: 100%;
     max-width: 450px;
+    width: 100%;
 }
 
-/* --- FOOTER --- */
+/* ===============================
+   TOAST NOTIFICATIONS
+================================ */
+#toast-container {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 9999;
+}
+
+.custom-toast {
+    min-width: 300px;
+    background: white;
+    border-left: 5px solid #333;
+    padding: 15px 20px;
+    margin-bottom: 15px;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.15);
+    animation: slideIn 0.3s ease-out forwards;
+    display: flex;
+    align-items: center;
+}
+
+.custom-toast.success { border-left-color: #2E7D32; }
+.custom-toast.error { border-left-color: #d32f2f; }
+.custom-toast.info { border-left-color: #0288d1; }
+
+.toast-icon {
+    font-size: 1.5rem;
+    margin-right: 15px;
+}
+
+@keyframes slideIn {
+    from { transform: translateX(100%); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
+}
+
+/* ===============================
+   FORM VALIDATION
+================================ */
+.validation-reqs {
+    font-size: 0.8rem;
+    color: #6c757d;
+    background: #f8f9fa;
+    padding: 10px;
+    border-radius: 8px;
+}
+
+.valid-check { color: #2E7D32; }
+.invalid-check { color: #e0e0e0; }
+
+/* ===============================
+   FOOTER
+================================ */
 footer {
     background: #1a1f24;
     color: #aeb5bc;
     padding: 60px 0 30px;
     margin-top: 60px;
 }
-.footer-title { color: white; font-weight: 700; margin-bottom: 20px; font-size: 1.5rem; }
-.social-icon {
-    width: 40px; height: 40px; background: rgba(255,255,255,0.1);
-    display: inline-flex; align-items: center; justify-content: center;
-    border-radius: 50%; color: white; margin-right: 10px; transition: 0.3s;
+
+.footer-title {
+    color: white;
+    font-weight: 700;
 }
-.social-icon:hover { background: var(--primary); transform: translateY(-3px); }
+
+.social-icon {
+    width: 40px;
+    height: 40px;
+    background: rgba(255,255,255,0.1);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    color: white;
+    margin-right: 10px;
+}
+
+.social-icon:hover {
+    background: var(--primary);
+    transform: translateY(-3px);
+}
+
 ```
 
 ---
@@ -2583,38 +3446,76 @@ footer {
 # Path: frontend/components/navbar.html
 <nav class="navbar navbar-expand-lg sticky-top">
     <div class="container">
+        <!-- Logo / Brand -->
         <a class="navbar-brand d-flex align-items-center" href="index.html">
-            <i class="bi bi-flower1 me-2 text-success"></i> Agrivendia
+            Agrivendia
         </a>
-        
-        <button class="navbar-toggler border-0 shadow-none" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+
+        <!-- Mobile Toggle Button -->
+        <button class="navbar-toggler border-0 shadow-none" type="button"
+                data-bs-toggle="collapse" data-bs-target="#navbarNav">
             <i class="bi bi-list fs-1 text-dark"></i>
         </button>
 
+        <!-- Navbar Links -->
         <div class="collapse navbar-collapse" id="navbarNav">
             <ul class="navbar-nav mx-auto mb-2 mb-lg-0">
-                <li class="nav-item"><a class="nav-link" ng-class="{'active-link': activePage=='home'}" href="index.html">Home</a></li>
-                <li class="nav-item"><a class="nav-link" ng-class="{'active-link': activePage=='market'}" href="market.html">Marketplace</a></li>
-                <li class="nav-item"><a class="nav-link" ng-class="{'active-link': activePage=='category'}" href="category.html">Categories</a></li>
-                <li class="nav-item"><a class="nav-link" ng-class="{'active-link': activePage=='plan'}" href="plan.html">Plans</a></li>
-                <li class="nav-item"><a class="nav-link" ng-class="{'active-link': activePage=='about'}" href="about.html">About</a></li>
+                <li class="nav-item"><a class="nav-link" href="index.html">Home</a></li>
+                <li class="nav-item"><a class="nav-link" href="market.html">Marketplace</a></li>
+                <li class="nav-item"><a class="nav-link" href="category.html">Categories</a></li>
+                <li class="nav-item"><a class="nav-link" href="plan.html">Plans</a></li>
+                <li class="nav-item"><a class="nav-link" href="about.html">About</a></li>
             </ul>
 
             <div class="d-flex align-items-center gap-2">
-                <!-- Logged In -->
+                
+                <!-- ✅ LOGGED IN VIEW (User Dropdown) -->
                 <div ng-if="currentUser" class="dropdown">
-                    <a class="nav-link dropdown-toggle fw-bold text-dark d-flex align-items-center" href="#" data-bs-toggle="dropdown">
-                        <div class="bg-success-subtle text-success rounded-circle d-flex align-items-center justify-content-center me-2" style="width: 35px; height: 35px;">
-                            {{currentUser.name.charAt(0)}}
+                    <a class="nav-link dropdown-toggle fw-bold text-dark d-flex align-items-center"
+                       href="#" data-bs-toggle="dropdown" aria-expanded="false">
+
+                        <!-- User Avatar -->
+                        <div class="me-2 d-flex align-items-center justify-content-center rounded-circle overflow-hidden"
+                             style="width: 35px; height: 35px; background: #e8f5e9;">
+                            <img ng-if="getImageUrl(currentUser)"
+                                 ng-src="{{getImageUrl(currentUser)}}"
+                                 style="width:100%; height:100%; object-fit:cover;">
+                            <span ng-if="!getImageUrl(currentUser)" class="text-success fw-bold">
+                                {{currentUser.name.charAt(0)}}
+                            </span>
                         </div>
                         {{currentUser.name}}
                     </a>
+
+                    <!-- DROPDOWN MENU -->
                     <ul class="dropdown-menu dropdown-menu-end shadow border-0 rounded-4 mt-2 p-2">
-                        <li><a class="dropdown-item rounded-3 mb-1" href="customer_dashboard.html"><i class="bi bi-grid-fill me-2 text-primary"></i> Dashboard</a></li>
-                        <li><a class="dropdown-item rounded-3 text-danger" href="#" ng-click="logout()"><i class="bi bi-box-arrow-right me-2"></i> Logout</a></li>
+                        
+                        <!-- 1. Dashboard Link -->
+                        <li>
+                            <a class="dropdown-item rounded-3 mb-1" href="customer_dashboard.html">
+                                <i class="bi bi-grid-fill me-2 text-primary"></i> Dashboard
+                            </a>
+                        </li>
+
+                        <!-- 2. My Profile Link (ADDED HERE) -->
+                        <li>
+                            <a class="dropdown-item rounded-3 mb-1" href="profile.html">
+                                <i class="bi bi-person-fill me-2 text-success"></i> My Profile
+                            </a>
+                        </li>
+
+                        <li><hr class="dropdown-divider"></li>
+                        
+                        <!-- 3. Logout Link -->
+                        <li>
+                            <a class="dropdown-item rounded-3 text-danger" href="#" ng-click="logout()">
+                                <i class="bi bi-box-arrow-right me-2"></i> Logout
+                            </a>
+                        </li>
                     </ul>
                 </div>
-                <!-- Logged Out -->
+
+                <!-- ❌ LOGGED OUT VIEW -->
                 <div ng-if="!currentUser" class="d-flex gap-2">
                     <a href="login.html" class="btn btn-outline-custom border-0 rounded-pill px-3">Login</a>
                     <a href="register.html" class="btn btn-primary-custom rounded-pill px-4 py-2 small">Sign Up</a>
@@ -2640,6 +3541,35 @@ footer {
         </a>
     </div>
 </nav>
+```
+
+---
+
+## File: backend/utils.py
+```python
+# Path: backend/utils.py
+# Path: backend/utils.py
+from django.core.mail import send_mail
+
+def notify_user(email, subject, message):
+    """
+    Centralized email notification handler.
+    Call this function from any view/serializer.
+    """
+    # Log to console for MVP/Debugging
+    print(f"\n[EMAIL SIMULATION] To: {email} | Subject: {subject} | Body: {message}\n")
+    
+    # Actual Email Sending Logic (Uncomment when SMTP is configured in settings.py)
+    # try:
+    #     send_mail(
+    #         subject, 
+    #         message, 
+    #         'admin@agrivendia.com', # Sender
+    #         [email],                # Recipient List
+    #         fail_silently=True
+    #     )
+    # except Exception as e:
+    #     print(f"Error sending email: {e}")
 ```
 
 ---
@@ -3242,16 +4172,30 @@ application = get_wsgi_application()
 # Path: backend/customer/serializer.py
 from rest_framework import serializers
 from .models import Customer
+import base64
+import uuid
+from django.core.files.base import ContentFile
+
+# Helper for Image Upload
+class Base64ImageField(serializers.Field):
+    def to_internal_value(self, data):
+        if isinstance(data, str) and data.startswith('data:image'):
+            try:
+                format, imgstr = data.split(';base64,') 
+                ext = format.split('/')[-1] 
+                id = uuid.uuid4()
+                data = ContentFile(base64.b64decode(imgstr), name=f"{id}.{ext}")
+            except:
+                raise serializers.ValidationError("Invalid image format")
+        return data
+
+    def to_representation(self, value):
+        if not value: return None
+        try: return value.url
+        except: return None
 
 class CustomerSerializer(serializers.ModelSerializer):
-    '''name = serializers.CharField(max_length = 100)
-    email = serializers.EmailField()
-    phone = serializers.CharField(max_length = 10)
-    address = serializers.CharField()
-    password = serializers.CharField(max_length=100)
-    created_at = serializers.DateTimeField(auto_now = True)'''
-
-
+    profile_image = Base64ImageField(required=False, allow_null=True)
 
     class Meta:
         model = Customer
@@ -3321,15 +4265,24 @@ from .models import Customer, PasswordResetToken
 from .serializer import CustomerSerializer
 import requests
 import os
+import re
 from django.utils import timezone
 
 TELEGRAM_BOT_TOKEN = os.environ.get("TLGRMTKN")
 
-# --- 1. LOGIN ---
+# =====================================================
+# 1️⃣ LOGIN API
+# =====================================================
 class LoginAPI(APIView):
     def post(self, request):
         email = request.data.get('email')
         password = request.data.get('password')
+
+        if not email or not password:
+            return Response(
+                {"error": "Email and password are required"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
         try:
             customer = Customer.objects.get(email=email)
@@ -3337,117 +4290,223 @@ class LoginAPI(APIView):
                 serializer = CustomerSerializer(customer)
                 return Response(serializer.data, status=status.HTTP_200_OK)
             else:
-                return Response({"error": "Incorrect Password"}, status=status.HTTP_400_BAD_REQUEST)
+                return Response(
+                    {"error": "Incorrect Password"},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
         except Customer.DoesNotExist:
-            return Response({"error": "Email not found."}, status=status.HTTP_404_NOT_FOUND)
+            return Response(
+                {"error": "Email not found"},
+                status=status.HTTP_404_NOT_FOUND
+            )
 
-# --- 2. FORGOT PASSWORD (SEND LINK) ---
+
+# =====================================================
+# 2️⃣ CUSTOMER CRUD (With Strong Password Validation)
+# =====================================================
+class CustomerAPI(APIView):
+
+    # CREATE
+    def post(self, request):
+        password = request.data.get('password')
+
+        # 🔐 Password strength regex
+        password_regex = r"^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$"
+
+        if password and not re.match(password_regex, password):
+            return Response(
+                {
+                    "error": (
+                        "Password too weak. "
+                        "Must contain at least 8 characters, "
+                        "one uppercase, one lowercase, one number, "
+                        "and one special character."
+                    )
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        serializer = CustomerSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    # READ
+    def get(self, request, id=None):
+        if id:
+            try:
+                customer = Customer.objects.get(id=id)
+                serializer = CustomerSerializer(customer)
+                return Response(serializer.data)
+            except Customer.DoesNotExist:
+                return Response(
+                    {"error": "Customer not found"},
+                    status=status.HTTP_404_NOT_FOUND
+                )
+
+        customers = Customer.objects.all()
+        serializer = CustomerSerializer(customers, many=True)
+        return Response(serializer.data)
+
+    # UPDATE (Partial update enabled)
+    def put(self, request, id):
+        try:
+            customer = Customer.objects.get(id=id)
+        except Customer.DoesNotExist:
+            return Response(
+                {"error": "Customer not found"},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        serializer = CustomerSerializer(
+            customer,
+            data=request.data,
+            partial=True
+        )
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    # DELETE
+    def delete(self, request, id):
+        try:
+            customer = Customer.objects.get(id=id)
+            customer.delete()
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        except Customer.DoesNotExist:
+            return Response(
+                {"error": "Customer not found"},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+
+# =====================================================
+# 3️⃣ FORGOT PASSWORD (SEND TELEGRAM LINK)
+# =====================================================
 class ForgotPasswordLinkAPI(APIView):
     def post(self, request):
         if not TELEGRAM_BOT_TOKEN:
-            return Response({"error": "Server Config Error: Telegram Token Missing"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-            
+            return Response(
+                {"error": "Server Config Error: Telegram Token Missing"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
         email = request.data.get('email')
         chat_id = request.data.get('chat_id')
+
+        if not email or not chat_id:
+            return Response(
+                {"error": "Email and Chat ID are required"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
         try:
             customer = Customer.objects.get(email=email)
         except Customer.DoesNotExist:
-            return Response({"error": "Email not registered."}, status=status.HTTP_404_NOT_FOUND)
+            return Response(
+                {"error": "Email not registered"},
+                status=status.HTTP_404_NOT_FOUND
+            )
 
-        if not chat_id:
-             return Response({"error": "Chat ID is required."}, status=status.HTTP_400_BAD_REQUEST)
+        # Create reset token
+        reset_obj = PasswordResetToken.objects.create(
+            user_email=email
+        )
 
-        # Create Token
-        reset_obj = PasswordResetToken.objects.create(user_email=email)
-        
-        # Link to Frontend (Adjust port if needed)
-        # Assuming frontend is serving reset_password.html
-        reset_link = f"http://127.0.0.1:5500/frontend/reset_password.html?token={reset_obj.token}"
-        
-        # Send Telegram Message
-        message = f"🔑 *Agrivendia Password Reset*\nHello {customer.name},\n\nClick here to reset:\n{reset_link}\n\n(Link expires in 30 mins)"
-        telegram_url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
-        data = { "chat_id": chat_id, "text": message, "parse_mode": "Markdown" }
-        
+        # Frontend reset link
+        reset_link = (
+            "http://127.0.0.1:5500/frontend/reset_password.html"
+            f"?token={reset_obj.token}"
+        )
+
+        # Telegram message
+        message = (
+            "🔑 *Agrivendia Password Reset*\n\n"
+            f"Hello {customer.name},\n\n"
+            "Click the link below to reset your password:\n"
+            f"{reset_link}\n\n"
+            "_This link expires in 30 minutes_"
+        )
+
+        telegram_url = (
+            f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
+        )
+
+        data = {
+            "chat_id": chat_id,
+            "text": message,
+            "parse_mode": "Markdown"
+        }
+
         try:
             requests.post(telegram_url, data=data)
-            return Response({"message": "Reset link sent to Telegram!"}, status=status.HTTP_200_OK)
+            return Response(
+                {"message": "Password reset link sent to Telegram"},
+                status=status.HTTP_200_OK
+            )
         except Exception as e:
-            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return Response(
+                {"error": str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
-# --- 3. RESET PASSWORD (VERIFY & CHANGE) ---
+
+# =====================================================
+# 4️⃣ RESET PASSWORD (VERIFY TOKEN & UPDATE)
+# =====================================================
 class ResetPasswordAPI(APIView):
     def post(self, request):
         token = request.data.get('token')
         new_password = request.data.get('new_password')
 
         if not token or not new_password:
-            return Response({"error": "Missing token or password"}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {"error": "Token and new password are required"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
         try:
             reset_obj = PasswordResetToken.objects.get(token=token)
-            
-            # Check Expiry (30 mins)
+
+            # ⏰ Check expiry (30 minutes)
             time_diff = timezone.now() - reset_obj.created_at
-            if time_diff.total_seconds() > 1800: 
+            if time_diff.total_seconds() > 1800:
                 reset_obj.delete()
-                return Response({"error": "Link expired."}, status=status.HTTP_400_BAD_REQUEST)
-            
-            # Change Password
-            customer = Customer.objects.get(email=reset_obj.user_email)
+                return Response(
+                    {"error": "Reset link expired"},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            # Update password
+            customer = Customer.objects.get(
+                email=reset_obj.user_email
+            )
             customer.password = new_password
             customer.save()
-            
-            # Delete Token
+
+            # Delete token after use
             reset_obj.delete()
-            
-            return Response({"message": "Password updated successfully!"}, status=status.HTTP_200_OK)
+
+            return Response(
+                {"message": "Password updated successfully"},
+                status=status.HTTP_200_OK
+            )
 
         except PasswordResetToken.DoesNotExist:
-            return Response({"error": "Invalid Token"}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {"error": "Invalid token"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
         except Customer.DoesNotExist:
-            return Response({"error": "User not found"}, status=status.HTTP_404_NOT_FOUND)
+            return Response(
+                {"error": "User not found"},
+                status=status.HTTP_404_NOT_FOUND
+            )
 
-# --- 4. CRUD ---
-class CustomerAPI(APIView):
-    def post(self, request):
-        serializer = CustomerSerializer(data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-    def get(self, request, id=None):
-        if id:
-            try:
-                customer = Customer.objects.get(id=id)
-            except Customer.DoesNotExist:
-                return Response({"error": "Not Found"}, status=status.HTTP_404_NOT_FOUND)
-            serializer = CustomerSerializer(customer)
-            return Response(serializer.data)
-        customers = Customer.objects.all()
-        serializer = CustomerSerializer(customers, many=True)
-        return Response(serializer.data)
-
-    def put(self, request, id):
-        try:
-            customer = Customer.objects.get(id=id)
-        except Customer.DoesNotExist:
-            return Response({"error": "Not Found"}, status=status.HTTP_404_NOT_FOUND)
-        serializer = CustomerSerializer(customer, data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-    def delete(self, request, id):
-        try:
-            customer = Customer.objects.get(id=id)
-        except Customer.DoesNotExist:
-            return Response({"error": "Not Found"}, status=status.HTTP_404_NOT_FOUND)
-        customer.delete()
-        return Response(status=status.HTTP_204_NO_CONTENT)
 ```
 
 ---
@@ -3464,6 +4523,11 @@ class Customer(models.Model):
     phone = models.CharField(max_length=15)
     address = models.TextField(blank=True)
     password = models.CharField(max_length=100)
+    # NEW FIELD
+    profile_image = models.ImageField(upload_to='profile_pics/', blank=True, null=True)
+    # NEW: Track Plan Level (1=Free, 2=Grower, 3=Trader, 4=Enterprise)
+    plan_tier = models.IntegerField(default=1) 
+    
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
@@ -4113,8 +5177,12 @@ class ProductBidConfig(AppConfig):
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
+from django.db import transaction
 from .models import ProductBid
 from .serializer import ProductBidSerializer
+
+# IMPORT CENTRALIZED EMAIL UTILITY
+from utils import notify_user 
 
 class ProductBidAPI(APIView):
     
@@ -4134,9 +5202,32 @@ class ProductBidAPI(APIView):
 
     def post(self, request):
         serializer = ProductBidSerializer(data=request.data)
+        
+        # Validation: Check if Bid Quantity <= Available Quantity
         if serializer.is_valid():
+            # Check availability logic before saving
+            data = serializer.validated_data
+            available_qty = 0
+            
+            if data.get('sell_post'):
+                available_qty = data['sell_post'].quantity
+            elif data.get('buy_post'):
+                available_qty = data['buy_post'].quantity
+                
+            if data['quantity'] > available_qty:
+                 return Response(
+                     {"error": f"Bid quantity ({data['quantity']}) exceeds available stock ({available_qty})"}, 
+                     status=status.HTTP_400_BAD_REQUEST
+                 )
+
             serializer.save()
+            
+            # Notify Post Owner (Using Utility)
+            post_owner = data['sell_post'].customer if data.get('sell_post') else data['buy_post'].customer
+            notify_user(post_owner.email, "New Bid Received", f"You have a new bid of {data['amount']}")
+            
             return Response(serializer.data, status=status.HTTP_201_CREATED)
+            
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     def put(self, request, id):
@@ -4145,17 +5236,73 @@ class ProductBidAPI(APIView):
         except ProductBid.DoesNotExist:
             return Response({"error": "Bid not found"}, status=status.HTTP_404_NOT_FOUND)
 
-        # FIXED: SECURITY - Only allow updating the 'status' field via PUT
-        # This prevents users/frontend from accidentally modifying price/qty during acceptance
         status_update = request.data.get('status')
         if not status_update:
             return Response({"error": "Only status updates allowed"}, status=status.HTTP_400_BAD_REQUEST)
 
-        bid.status = status_update
-        bid.save()
-        
-        serializer = ProductBidSerializer(bid)
-        return Response(serializer.data)
+        # ---------------------------------------------------------
+        # CORE BUSINESS LOGIC: ACCEPTANCE & INVENTORY DEDUCTION
+        # ---------------------------------------------------------
+        if status_update == 'ACCEPTED':
+            try:
+                with transaction.atomic():
+                    # 1. Select Post for Update (Lock the row to prevent Race Conditions)
+                    if bid.sell_post:
+                        post = bid.sell_post.__class__.objects.select_for_update().get(id=bid.sell_post.id)
+                        related_bids = ProductBid.objects.filter(sell_post=post, status='PENDING').exclude(id=bid.id)
+                    elif bid.buy_post:
+                        post = bid.buy_post.__class__.objects.select_for_update().get(id=bid.buy_post.id)
+                        related_bids = ProductBid.objects.filter(buy_post=post, status='PENDING').exclude(id=bid.id)
+                    else:
+                        raise Exception("Bid is not linked to any post")
+
+                    # 2. Critical Check: Is Quantity still sufficient?
+                    if post.quantity < bid.quantity:
+                        # Auto-invalidate this bid if stock is gone
+                        bid.status = 'INVALID'
+                        bid.save()
+                        return Response(
+                            {"error": "Insufficient Quantity. Stock changed before you accepted."}, 
+                            status=status.HTTP_409_CONFLICT
+                        )
+
+                    # 3. Deduct Inventory
+                    post.quantity -= bid.quantity
+                    post.save()
+
+                    # 4. Accept Bid
+                    bid.status = 'ACCEPTED'
+                    bid.save()
+
+                    # 5. Notify Bidder (Using Utility)
+                    notify_user(bid.bidder.email, "Bid Accepted!", 
+                                f"Your bid was accepted. Contact {post.customer.phone} to finalize.")
+
+                    # 6. Check "Invalid Bid" State for OTHER bids
+                    for other_bid in related_bids:
+                        if other_bid.quantity > post.quantity:
+                            other_bid.status = 'INVALID'
+                            other_bid.save()
+                            notify_user(other_bid.bidder.email, "Bid Invalidated", 
+                                        "The post quantity dropped below your requested amount.")
+
+                    serializer = ProductBidSerializer(bid)
+                    return Response(serializer.data)
+
+            except Exception as e:
+                return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+        # ---------------------------------------------------------
+        # LOGIC: REJECT OR OTHER STATUS
+        # ---------------------------------------------------------
+        else:
+            bid.status = status_update
+            bid.save()
+            if status_update == 'REJECTED':
+                notify_user(bid.bidder.email, "Bid Rejected", "Your bid was rejected by the owner.")
+            
+            serializer = ProductBidSerializer(bid)
+            return Response(serializer.data)
 ```
 
 ---
@@ -4173,6 +5320,7 @@ class ProductBid(models.Model):
         ('PENDING', 'Pending'),
         ('ACCEPTED', 'Accepted'),
         ('REJECTED', 'Rejected'),
+        ('INVALID', 'Invalid'), 
     )
 
     # Who is bidding?
@@ -4405,6 +5553,22 @@ from customer.models import Customer
 from product.models import Product
 
 class ProductBuy(models.Model):
+    UNIT_CHOICES = (
+        ('kg', 'Kilograms (kg)'),
+        ('ton', 'Metric Tons'),
+        ('quintal', 'Quintals'),
+        ('g', 'Grams'),
+        ('lb', 'Pounds'),
+        ('l', 'Litres'),
+        ('ml', 'Millilitres'),
+        ('box', 'Boxes'),
+        ('crate', 'Crates'),
+        ('dozen', 'Dozens'),
+        ('piece', 'Pieces/Numbers'),
+        ('barrel', 'Barrels'),
+        ('bag', 'Bags/Sacks'),
+        ('bunch', 'Bunches')
+    )
     customer = models.ForeignKey(Customer, on_delete=models.CASCADE, related_name='buy_posts')
     product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='buy_listings', null=True)
     category = models.ForeignKey(Category, on_delete=models.SET_NULL, null=True, blank=True, related_name='buy_products')
@@ -4414,6 +5578,7 @@ class ProductBuy(models.Model):
     price = models.DecimalField(max_digits=10, decimal_places=2)
     location = models.CharField(max_length=100)
     quantity = models.PositiveIntegerField()
+    unit = models.CharField(max_length=10, choices=UNIT_CHOICES, default='kg')
     
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -4716,6 +5881,7 @@ class ProductSellConfig(AppConfig):
 ## File: backend/product_sell/views.py
 ```python
 # Path: backend/product_sell/views.py
+# Path: backend/product_sell/views.py
 from django.shortcuts import render
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -4728,8 +5894,6 @@ class ProductSellAPI(APIView):
     
     # --- OWNERSHIP HELPER ---
     def validate_ownership(self, product_sell, request_data):
-        # In a real app with Auth headers, use request.user.id
-        # Here we rely on the body/param for training purposes
         requester_id = request_data.get('customer') or self.request.query_params.get('customer')
         if not requester_id:
              return False
@@ -4742,7 +5906,39 @@ class ProductSellAPI(APIView):
                 customer_id = request.data.get('customer')
                 current_customer = Customer.objects.get(id=customer_id)
                 
-                # Save with foreign key relationship
+                # ---------------------------------------------------------
+                # ✅ UPDATED SUBSCRIPTION LOGIC
+                # ---------------------------------------------------------
+                # Tier 1 = Free (3 Posts)
+                # Tier 2 = Grower Basic (10 Posts)
+                # Tier 3 = Trader Pro (Unlimited/1000)
+                # Tier 4 = Enterprise (Unlimited)
+                
+                tier = current_customer.plan_tier
+                limit = 3  # Default / Free
+                
+                if tier == 2: limit = 10
+                elif tier == 3: limit = 1000
+                elif tier == 4: limit = 999999 
+
+                # Count *active* sell posts (where quantity > 0)
+                # This allows them to delete old posts to free up slots if they don't want to upgrade
+                current_count = ProductSell.objects.filter(customer=current_customer, quantity__gt=0).count()
+                
+                if current_count >= limit:
+                    # Message guides them to the next step
+                    msg = f"Plan Limit Reached ({limit} active posts)."
+                    if tier < 3:
+                        msg += " Upgrade your plan to post more."
+                    else:
+                        msg += " Contact Enterprise Sales for custom limits."
+
+                    return Response(
+                        {"error": msg}, 
+                        status=status.HTTP_402_PAYMENT_REQUIRED
+                    )
+                # ---------------------------------------------------------
+
                 serializer.save(customer=current_customer)
                 return Response(serializer.data, status=status.HTTP_201_CREATED)
             except Customer.DoesNotExist:
@@ -4775,7 +5971,6 @@ class ProductSellAPI(APIView):
         except ProductSell.DoesNotExist:
             return Response({"error":"Not Found"}, status=status.HTTP_404_NOT_FOUND)
             
-        # Check Ownership
         if not self.validate_ownership(productSell, request.data):
              return Response({"error": "Permission Denied"}, status=status.HTTP_403_FORBIDDEN)
 
@@ -4791,7 +5986,6 @@ class ProductSellAPI(APIView):
         except ProductSell.DoesNotExist:
             return Response({"error":"Not Found"}, status=status.HTTP_404_NOT_FOUND)
 
-        # Check Ownership (Need customer ID in body or params)
         if not self.validate_ownership(productSell, request.data):
              return Response({"error": "Permission Denied"}, status=status.HTTP_403_FORBIDDEN)
 
@@ -4810,6 +6004,23 @@ from customer.models import Customer
 from product.models import Product  
 
 class ProductSell(models.Model):
+    UNIT_CHOICES = (
+        ('kg', 'Kilograms (kg)'),
+        ('ton', 'Metric Tons'),
+        ('quintal', 'Quintals'),
+        ('g', 'Grams'),
+        ('lb', 'Pounds'),
+        ('l', 'Litres'),
+        ('ml', 'Millilitres'),
+        ('box', 'Boxes'),
+        ('crate', 'Crates'),
+        ('dozen', 'Dozens'),
+        ('piece', 'Pieces/Numbers'),
+        ('barrel', 'Barrels'),
+        ('bag', 'Bags/Sacks'),
+        ('bunch', 'Bunches')
+    )
+
     # Foreign Keys serve as the Source of Truth
     customer = models.ForeignKey(Customer, on_delete=models.CASCADE, related_name='sell_posts')
     product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='sell_listings', null=True) 
@@ -4821,6 +6032,7 @@ class ProductSell(models.Model):
     location = models.CharField(max_length=100)
     quantity = models.PositiveIntegerField()
     description = models.CharField(max_length=500)
+    unit = models.CharField(max_length=10, choices=UNIT_CHOICES, default='kg')
     
     created_at = models.DateTimeField(auto_now_add=True)
 
