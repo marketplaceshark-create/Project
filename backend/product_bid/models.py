@@ -1,3 +1,4 @@
+# Path: backend/product_bid/models.py
 from django.db import models
 from customer.models import Customer
 from product_sell.models import ProductSell
@@ -9,6 +10,7 @@ class ProductBid(models.Model):
         ('ACCEPTED', 'Accepted'),
         ('REJECTED', 'Rejected'),
         ('INVALID', 'Invalid'), 
+        ('CANCELLED', 'Cancelled'), # Added
     )
 
     # Who is bidding?

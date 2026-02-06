@@ -5,8 +5,6 @@ from rest_framework import status
 from django.db import transaction
 from .models import ProductBid
 from .serializer import ProductBidSerializer
-
-# IMPORT CENTRALIZED EMAIL UTILITY
 from utils import notify_user 
 
 class ProductBidAPI(APIView):
@@ -28,9 +26,7 @@ class ProductBidAPI(APIView):
     def post(self, request):
         serializer = ProductBidSerializer(data=request.data)
         
-        # Validation: Check if Bid Quantity <= Available Quantity
         if serializer.is_valid():
-            # Check availability logic before saving
             data = serializer.validated_data
             available_qty = 0
             
@@ -46,8 +42,6 @@ class ProductBidAPI(APIView):
                  )
 
             serializer.save()
-            
-            # Notify Post Owner (Using Utility)
             post_owner = data['sell_post'].customer if data.get('sell_post') else data['buy_post'].customer
             notify_user(post_owner.email, "New Bid Received", f"You have a new bid of {data['amount']}")
             
@@ -65,13 +59,19 @@ class ProductBidAPI(APIView):
         if not status_update:
             return Response({"error": "Only status updates allowed"}, status=status.HTTP_400_BAD_REQUEST)
 
-        # ---------------------------------------------------------
-        # CORE BUSINESS LOGIC: ACCEPTANCE & INVENTORY DEDUCTION
-        # ---------------------------------------------------------
+        # 1. CANCELLED LOGIC
+        if status_update == 'CANCELLED':
+            if bid.status != 'PENDING':
+                return Response({"error": "Only pending bids can be cancelled"}, status=status.HTTP_400_BAD_REQUEST)
+            
+            bid.status = 'CANCELLED'
+            bid.save()
+            return Response(ProductBidSerializer(bid).data)
+
+        # 2. ACCEPTED LOGIC (With Inventory Deduction)
         if status_update == 'ACCEPTED':
             try:
                 with transaction.atomic():
-                    # 1. Select Post for Update (Lock the row to prevent Race Conditions)
                     if bid.sell_post:
                         post = bid.sell_post.__class__.objects.select_for_update().get(id=bid.sell_post.id)
                         related_bids = ProductBid.objects.filter(sell_post=post, status='PENDING').exclude(id=bid.id)
@@ -81,9 +81,7 @@ class ProductBidAPI(APIView):
                     else:
                         raise Exception("Bid is not linked to any post")
 
-                    # 2. Critical Check: Is Quantity still sufficient?
                     if post.quantity < bid.quantity:
-                        # Auto-invalidate this bid if stock is gone
                         bid.status = 'INVALID'
                         bid.save()
                         return Response(
@@ -91,19 +89,15 @@ class ProductBidAPI(APIView):
                             status=status.HTTP_409_CONFLICT
                         )
 
-                    # 3. Deduct Inventory
                     post.quantity -= bid.quantity
                     post.save()
 
-                    # 4. Accept Bid
                     bid.status = 'ACCEPTED'
                     bid.save()
 
-                    # 5. Notify Bidder (Using Utility)
                     notify_user(bid.bidder.email, "Bid Accepted!", 
                                 f"Your bid was accepted. Contact {post.customer.phone} to finalize.")
 
-                    # 6. Check "Invalid Bid" State for OTHER bids
                     for other_bid in related_bids:
                         if other_bid.quantity > post.quantity:
                             other_bid.status = 'INVALID'
@@ -117,9 +111,7 @@ class ProductBidAPI(APIView):
             except Exception as e:
                 return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
-        # ---------------------------------------------------------
-        # LOGIC: REJECT OR OTHER STATUS
-        # ---------------------------------------------------------
+        # 3. REJECTED LOGIC
         else:
             bid.status = status_update
             bid.save()

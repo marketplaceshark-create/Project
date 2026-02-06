@@ -1,4 +1,4 @@
-
+<!-- Path: frontend/customer_dashboard.html -->
 <!DOCTYPE html>
 <html lang="en" ng-app="userApp">
 <head>
@@ -62,7 +62,6 @@
 
         <!-- TABS & CONTENT -->
         <div class="bg-white p-4 rounded-4 shadow-sm border">
-            <!-- REMOVED SETTINGS TAB FROM HERE -->
             <ul class="nav nav-pills nav-fill mb-4 p-1 bg-light rounded-pill" style="max-width: 600px; margin: 0 auto;">
                 <li class="nav-item">
                     <a class="nav-link rounded-pill" ng-class="{'active bg-white shadow-sm text-success': activeTab == 'sell'}" ng-click="activeTab = 'sell'" href="#">My Sales</a>
@@ -105,7 +104,11 @@
                                         <button class="btn btn-success btn-sm rounded-pill px-3" ng-click="updateBid(bid, 'ACCEPTED')">Accept</button>
                                         <button class="btn btn-outline-danger btn-sm rounded-pill px-3" ng-click="updateBid(bid, 'REJECTED')">Decline</button>
                                     </div>
-                                    <span ng-if="bid.status != 'PENDING'" class="badge" ng-class="{'bg-success': bid.status=='ACCEPTED', 'bg-danger': bid.status=='REJECTED'}">{{bid.status}}</span>
+                                    <span ng-if="bid.status != 'PENDING'" class="badge" ng-class="{'bg-success': bid.status=='ACCEPTED', 'bg-danger': bid.status=='REJECTED', 'bg-secondary': bid.status=='CANCELLED'}">{{bid.status}}</span>
+                                </div>
+                                <!-- Owner seeing Bidder Details -->
+                                <div ng-if="bid.status === 'ACCEPTED' && bid.contact_exchange" class="mt-2 w-100 border-top pt-2">
+                                     <small class="text-muted"><i class="bi bi-telephone"></i> Call Bidder: <strong>{{bid.contact_exchange.bidder_phone}}</strong></small>
                                 </div>
                             </div>
                         </div>
@@ -136,7 +139,11 @@
                             <div ng-if="getBidsForProduct(item.id, 'buy').length == 0" class="text-center text-muted small">No sellers yet.</div>
                             <div ng-repeat="bid in getBidsForProduct(item.id, 'buy')" class="d-flex justify-content-between align-items-center bg-white p-3 rounded mb-2 border">
                                 <div><span class="fw-bold">{{bid.bidder_details.name}}</span> offers stock at <span class="text-success fw-bold">₹{{bid.amount}}</span></div>
-                                <span class="badge" ng-class="{'bg-success': bid.status=='ACCEPTED', 'bg-warning text-dark': bid.status=='PENDING'}">{{bid.status}}</span>
+                                <span class="badge" ng-class="{'bg-success': bid.status=='ACCEPTED', 'bg-warning text-dark': bid.status=='PENDING', 'bg-secondary': bid.status=='CANCELLED'}">{{bid.status}}</span>
+                                <!-- Owner seeing Bidder Details -->
+                                <div ng-if="bid.status === 'ACCEPTED' && bid.contact_exchange" class="mt-2 w-100 border-top pt-2">
+                                     <small class="text-muted"><i class="bi bi-telephone"></i> Call Seller: <strong>{{bid.contact_exchange.bidder_phone}}</strong></small>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -148,19 +155,36 @@
             <div ng-show="activeTab == 'bids'">
                 <div class="row g-4">
                     <div class="col-md-6" ng-repeat="bid in myBids">
-                        <div class="card h-100 border-0 shadow-sm">
+                        <div class="card h-100 border-0 shadow-sm" ng-class="{'opacity-50': bid.status === 'CANCELLED'}">
                             <div class="card-body p-4">
                                 <div class="d-flex justify-content-between mb-3">
                                     <span class="badge rounded-pill bg-light text-dark border">ID #{{bid.id}}</span>
-                                    <span class="badge rounded-pill" ng-class="{'bg-warning text-dark': bid.status=='PENDING', 'bg-success': bid.status=='ACCEPTED', 'bg-danger': bid.status=='REJECTED'}">{{bid.status}}</span>
+                                    <span class="badge rounded-pill" ng-class="{
+                                        'bg-warning text-dark': bid.status=='PENDING', 
+                                        'bg-success': bid.status=='ACCEPTED', 
+                                        'bg-danger': bid.status=='REJECTED',
+                                        'bg-secondary': bid.status=='CANCELLED'}">{{bid.status}}</span>
                                 </div>
                                 <h5 class="fw-bold mb-3">
                                      <a ng-if="bid.sell_post" href="product_detail.html?id={{bid.sell_post}}&type=sell" class="text-dark">View Listing <i class="bi bi-box-arrow-up-right"></i></a>
                                      <a ng-if="bid.buy_post" href="product_detail.html?id={{bid.buy_post}}&type=buy" class="text-dark">View Listing <i class="bi bi-box-arrow-up-right"></i></a>
                                 </h5>
-                                <div class="p-3 bg-light rounded">
+                                <div class="p-3 bg-light rounded mb-3">
                                     <div class="d-flex justify-content-between"><span class="text-muted">Your Offer:</span><span class="fw-bold text-success">₹{{bid.amount}}</span></div>
                                 </div>
+
+                                <!-- ✅ SHOW OWNER CONTACT IF ACCEPTED -->
+                                <div ng-if="bid.status === 'ACCEPTED' && bid.contact_exchange" class="alert alert-success py-2 small mb-3">
+                                    <strong><i class="bi bi-telephone-fill"></i> Owner Contact:</strong><br>
+                                    {{bid.contact_exchange.owner_phone}} | {{bid.contact_exchange.owner_email}}
+                                </div>
+
+                                <!-- ✅ WITHDRAW BUTTON -->
+                                <button ng-if="bid.status === 'PENDING'" 
+                                        class="btn btn-outline-secondary btn-sm w-100 rounded-pill" 
+                                        ng-click="updateBid(bid, 'CANCELLED')">
+                                    <i class="bi bi-x-circle"></i> Withdraw Offer
+                                </button>
                             </div>
                         </div>
                     </div>

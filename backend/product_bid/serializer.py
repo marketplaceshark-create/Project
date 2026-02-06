@@ -4,27 +4,39 @@ from .models import ProductBid
 from customer.serializer import CustomerSerializer
 
 class ProductBidSerializer(serializers.ModelSerializer):
-    # Nested serializer to show bidder name in frontend easily
+    # Basic bidder info (Name only usually, but we'll filter sensitivity in frontend for Pending)
     bidder_details = CustomerSerializer(source='bidder', read_only=True)
     
-    # Custom field to get the Post Owner's details (for the bidder to see)
+    # Custom field to get the Post Owner's details
     post_owner_details = serializers.SerializerMethodField()
+
+    # NEW: Secure Contact Exchange
+    contact_exchange = serializers.SerializerMethodField()
 
     class Meta:
         model = ProductBid
         fields = '__all__'
     
     def get_post_owner_details(self, obj):
-        # If this bid is on a Sell Post, return Seller's info
-        if obj.sell_post and obj.sell_post.customer:
+        # Identify Owner
+        owner = None
+        if obj.sell_post: owner = obj.sell_post.customer
+        elif obj.buy_post: owner = obj.buy_post.customer
+        
+        if owner:
+            return {"name": owner.name} # Minimal info initially
+        return None
+
+    def get_contact_exchange(self, obj):
+        """
+        Returns full contact details of both parties ONLY if Accepted.
+        """
+        if obj.status == 'ACCEPTED':
+            owner = obj.sell_post.customer if obj.sell_post else obj.buy_post.customer
             return {
-                "name": obj.sell_post.customer.name,
-                "phone": obj.sell_post.customer.phone
-            }
-        # If this bid is on a Buy Post, return Buyer's info
-        elif obj.buy_post and obj.buy_post.customer:
-            return {
-                "name": obj.buy_post.customer.name,
-                "phone": obj.buy_post.customer.phone
+                "owner_phone": owner.phone,
+                "owner_email": owner.email,
+                "bidder_phone": obj.bidder.phone,
+                "bidder_email": obj.bidder.email
             }
         return None

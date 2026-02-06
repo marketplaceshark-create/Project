@@ -386,3 +386,40 @@ footer {
     background: var(--primary);
     transform: translateY(-3px);
 }
+
+.sold-out-card {
+    filter: grayscale(100%);
+    opacity: 0.7;
+    pointer-events: none; /* Disable clicking */
+    position: relative;
+}
+
+.badge-sold-out {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) rotate(-15deg);
+    background: #d32f2f;
+    color: white;
+    padding: 10px 30px;
+    font-weight: 800;
+    text-transform: uppercase;
+    font-size: 1.5rem;
+    border: 3px solid white;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+    z-index: 10;
+}
+
+.contact-reveal-box {
+    background: #e8f5e9;
+    border: 1px dashed #2E7D32;
+    border-radius: 12px;
+    padding: 15px;
+    margin-top: 10px;
+    animation: fadeIn 0.5s;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-5px); }
+    to { opacity: 1; transform: translateY(0); }
+}
