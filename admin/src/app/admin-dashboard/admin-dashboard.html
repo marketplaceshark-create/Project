@@ -1,0 +1,65 @@
+<div class="admin-container">
+  <aside class="sidebar">
+    <div class="logo"><h2>AgriAdmin</h2></div>
+    <nav>
+      <button [class.active]="currentTitle === 'customer'" (click)="setView('customer')">Customers</button>
+      <button [class.active]="currentTitle === 'category'" (click)="setView('category')">Categories</button>
+      <button [class.active]="currentTitle === 'product'" (click)="setView('product')">Products</button>
+      <button [class.active]="currentTitle === 'plan'" (click)="setView('plan')">Plans</button>
+      <button [class.active]="currentTitle === 'user'" (click)="setView('user')">Admins</button>
+    </nav>
+  </aside>
+
+  <main class="content">
+    <header class="content-header">
+      <h1>{{ currentTitle | titlecase }} Management</h1>
+      <button class="btn-add" (click)="openAddModal()">+ Add New</button>
+    </header>
+
+    <div class="table-card">
+      <table>
+        <thead>
+          <tr>
+            <th *ngFor="let col of columns">{{ col | titlecase }}</th>
+            <th class="text-right">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let item of dataList">
+            <td *ngFor="let col of columns">
+              <input *ngIf="editId === item.id" [(ngModel)]="tempItem[col]" class="inline-input">
+              <span *ngIf="editId !== item.id">{{ item[col] }}</span>
+            </td>
+
+            <td class="text-right">
+              <div *ngIf="editId !== item.id">
+                <button class="btn-edit" (click)="editItem(item)">Edit</button>
+                <button class="btn-delete" (click)="deleteItem(item.id)">Delete</button>
+              </div>
+              <div *ngIf="editId === item.id">
+                <button class="btn-save" (click)="saveEdit()">Save</button>
+                <button class="btn-cancel" (click)="cancelEdit()">Cancel</button>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </main>
+
+  <div class="modal-overlay" *ngIf="showModal">
+    <div class="modal-box">
+      <h3>Add {{ currentTitle | titlecase }}</h3>
+      <div class="form-grid">
+        <div class="form-group" *ngFor="let field of fieldConfig[currentTitle]">
+          <label>{{ field | titlecase }}</label>
+          <input [(ngModel)]="newItem[field]" [placeholder]="'Enter ' + field">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-secondary" (click)="closeModal()">Cancel</button>
+        <button class="btn-primary" (click)="saveNewItem()">Save</button>
+      </div>
+    </div>
+  </div>
+</div>
