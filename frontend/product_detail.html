@@ -1,4 +1,3 @@
-<!-- Path: frontend/product_detail.html -->
 <!DOCTYPE html>
 <html lang="en" ng-app="userApp">
 <head>
@@ -7,46 +6,29 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
     <link href="css/styles.css" rel="stylesheet">
+
+    <!-- ✅ REQUIRED: Bootstrap Bundle JS for the Pop-up to work -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
     <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.8.2/angular.min.js"></script>
     <script src="app.js"></script>
     <style>
-        /* Page specific styles for badges */
         .badge-sold-out-detail {
-            position: absolute;
-            top: 20px;
-            right: 20px;
-            background: #d32f2f;
-            color: white;
-            padding: 10px 20px;
-            font-weight: 800;
-            border-radius: 8px;
-            z-index: 10;
+            position: absolute; top: 20px; right: 20px; background: #d32f2f; color: white; padding: 10px 20px; font-weight: 800; border-radius: 8px; z-index: 10;
         }
         .contact-reveal-box {
-            background: #e8f5e9;
-            border: 1px dashed #2E7D32;
-            border-radius: 12px;
-            padding: 15px;
-            margin-top: 10px;
-            animation: fadeIn 0.5s;
+            background: #e8f5e9; border: 1px dashed #2E7D32; border-radius: 12px; padding: 15px; margin-top: 10px; animation: fadeIn 0.5s;
         }
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(-5px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: translateY(0); } }
     </style>
 </head>
 <body ng-controller="ProductDetailCtrl" style="background-color: #f8f9fa;">
 
-    <!-- <div ng-include="'components/admin_navbar.html'"></div> -->
     <div ng-include="'components/navbar.html'" ng-init="activePage=''"></div>
-
-
 
     <div class="container pb-5">
         <!-- PRODUCT CARD -->
         <div class="bg-white rounded-4 shadow-sm overflow-hidden mb-4 position-relative">
-            <!-- SOLD OUT INDICATOR -->
             <div ng-if="product.quantity === 0" class="badge-sold-out-detail">SOLD OUT</div>
             
             <div class="row g-0" ng-class="{'opacity-50': product.quantity === 0}">
@@ -102,18 +84,17 @@
         <!-- BIDS SECTION -->
         <div class="row g-4">
             <!-- BID FORM -->
-            <div class="col-md-5" ng-if="!isOwner">
+            <div class="col-md-5">
                 <div class="bg-white p-4 rounded-4 shadow-sm h-100">
                     
-                    <!-- SOLD OUT MESSAGE -->
                     <div ng-if="product.quantity === 0" class="text-center py-5">
                         <i class="bi bi-slash-circle fs-1 text-danger"></i>
                         <h4 class="text-danger fw-bold mt-3">No Stock Available</h4>
-                        <p class="text-muted">This listing is currently sold out. Check back later.</p>
+                        <p class="text-muted">This listing is currently sold out.</p>
                     </div>
 
-                    <!-- ACTIVE BID FORM -->
-                    <div ng-if="product.quantity > 0">
+                    <!-- Place Offer Form -->
+                    <div ng-if="product.quantity > 0 && !isOwner">
                         <h4 class="fw-bold mb-3">Place an Offer</h4>
                         <form ng-submit="placeBid()">
                             <div class="form-floating mb-3">
@@ -131,11 +112,16 @@
                             <button type="submit" class="btn btn-primary-custom w-100 py-3 rounded-pill">Submit Offer</button>
                         </form>
                     </div>
+                    
+                    <div ng-if="isOwner" class="text-center py-5">
+                        <i class="bi bi-shield-check display-4 text-success"></i>
+                        <p class="mt-3 text-muted">You are the owner of this post.</p>
+                    </div>
                 </div>
             </div>
 
             <!-- BID LIST -->
-            <div class="{{isOwner ? 'col-12' : 'col-md-7'}}">
+            <div class="col-md-7">
                 <div class="bg-white p-4 rounded-4 shadow-sm h-100">
                     <h4 class="fw-bold mb-4">Offer History <span class="badge bg-light text-dark rounded-pill">{{bids.length}}</span></h4>
                     
@@ -147,55 +133,14 @@
                     <div class="vstack gap-3">
                         <div ng-repeat="b in bids" class="p-3 border rounded-3 transition-hover" 
                              ng-class="{'border-success bg-success-subtle': b.status === 'ACCEPTED', 'opacity-50': b.status === 'CANCELLED'}">
-                            
                             <div class="d-flex justify-content-between align-items-start">
                                 <div style="flex-grow: 1;">
                                     <div class="fw-bold">{{b.bidder_details.name}}</div>
-                                    <div class="bi bi-geo-alt-fill"">{{b.bidder_details.address}}</div>
-                                    <div class="small text-muted">
-                                        Wants <strong class="text-dark">{{b.quantity}} {{product.unit || 'kg'}}</strong> at <strong class="text-success fs-5">₹{{b.amount}}</strong>
-                                    </div>
-                                    <div class="mt-2 small bg-white p-2 rounded text-secondary border" ng-if="b.message">
-                                        <i class="bi bi-chat-quote me-1"></i> {{b.message}}
-                                    </div>
-
-                                    <!-- ✅ CONTACT REVEAL BOX (Only if Accepted) -->
-                                    <div ng-if="b.status === 'ACCEPTED' && b.contact_exchange" class="contact-reveal-box">
-                                        <div class="small fw-bold text-success text-uppercase mb-1"><i class="bi bi-unlock-fill"></i> Contact Details Unlocked</div>
-                                        
-                                        <!-- If I am the Owner, show Bidder's info -->
-                                        <div ng-if="isOwner">
-                                            <div class="small text-dark"><i class="bi bi-person-fill"></i> {{b.contact_exchange.bidder_email}}</div>
-                                            <div class="small text-dark"><i class="bi bi-telephone-fill"></i> {{b.contact_exchange.bidder_phone}}</div>
-                                        </div>
-                                        
-                                        <!-- If I am the Bidder, show Owner's info -->
-                                        <div ng-if="!isOwner && currentUser.id == b.bidder">
-                                            <div class="small text-dark"><i class="bi bi-person-fill"></i> {{b.contact_exchange.owner_email}}</div>
-                                            <div class="small text-dark"><i class="bi bi-telephone-fill"></i> {{b.contact_exchange.owner_phone}}</div>
-                                        </div>
-                                    </div>
+                                    <div class="small text-muted">Wants <strong>{{b.quantity}} {{product.unit}}</strong> at <strong class="text-success">₹{{b.amount}}</strong></div>
+                                    <div class="mt-2 small bg-white p-2 rounded text-secondary border" ng-if="b.message">{{b.message}}</div>
                                 </div>
                                 <div class="text-end ms-2">
-                                    <span class="badge rounded-pill mb-2" ng-class="{
-                                        'bg-warning text-dark': b.status=='PENDING', 
-                                        'bg-success': b.status=='ACCEPTED', 
-                                        'bg-danger': b.status=='REJECTED',
-                                        'bg-secondary': b.status=='CANCELLED'
-                                    }">{{b.status}}</span>
-                                    
-                                    <!-- OWNER ACTIONS -->
-                                    <div ng-if="isOwner && b.status === 'PENDING'" class="d-flex gap-1 justify-content-end mt-1">
-                                        <button class="btn btn-sm btn-success rounded-circle" ng-click="updateBidStatus(b, 'ACCEPTED')" title="Accept"><i class="bi bi-check-lg"></i></button>
-                                        <button class="btn btn-sm btn-outline-danger rounded-circle" ng-click="updateBidStatus(b, 'REJECTED')" title="Reject"><i class="bi bi-x-lg"></i></button>
-                                    </div>
-
-                                    <!-- BIDDER ACTIONS: Cancel -->
-                                    <div ng-if="!isOwner && currentUser.id == b.bidder && b.status === 'PENDING'" class="mt-1">
-                                        <button class="btn btn-sm btn-outline-secondary rounded-pill px-3" ng-click="updateBidStatus(b, 'CANCELLED')">
-                                            Cancel
-                                        </button>
-                                    </div>
+                                    <span class="badge rounded-pill mb-2 bg-secondary">{{b.status}}</span>
                                 </div>
                             </div>
                         </div>
@@ -204,5 +149,27 @@
             </div>
         </div>
     </div>
+
+    <!-- ✅ LOGIN POPUP MODAL (Add this at the bottom) -->
+    <div class="modal fade" id="loginWarningModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow-lg">
+                <div class="modal-header bg-warning text-dark border-0">
+                    <h5 class="modal-title fw-bold"><i class="bi bi-lock-fill me-2"></i> Login Required</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-4 text-center">
+                    <i class="bi bi-person-exclamation text-secondary mb-3" style="font-size: 3rem; display:block;"></i>
+                    <h5 class="fw-bold mb-2">You must be logged in!</h5>
+                    <p class="text-muted mb-4">Please login or register to place a bid on this item.</p>
+                    <div class="d-grid gap-2">
+                        <a href="login.html" class="btn btn-success fw-bold py-2">Go to Login</a>
+                        <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
 </body>
 </html>

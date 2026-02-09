@@ -152,28 +152,29 @@ app.controller('MarketCtrl', function ($scope, $http, $q, $window, API_CONFIG) {
     $scope.categories = [];
     $scope.masterProducts = [];
 
-    // 1. Fetch Categories
+    // 1. Handle URL Params
+    var urlParams = new URLSearchParams(window.location.search);
+    var categoryId = urlParams.get('category_id'); 
+    var searchQuery = urlParams.get('q'); 
+
+    if(searchQuery) $scope.filters.search = searchQuery;
+
+    if(categoryId) $scope.filters.categoryId =parseInt(categoryId);
+
+    // 2. Fetch Categories
     $http.get(API_CONFIG.url + "category/").then(function(res){ 
         $scope.categories = res.data; 
+
+        if(categoryId){
+            $scope.filters.categoryId = parseInt(categoryId);
+        }
     });
 
-    // 2. Fetch Master Products (For Product Filter)
+    //3. Fetch Master Products (For Product Filter)
     $http.get(API_CONFIG.url + "product/").then(function(res){ 
         $scope.masterProducts = res.data; 
     });
 
-    // 3. Handle URL Params
-    var urlParams = new URLSearchParams(window.location.search);
-    var categoryId = urlParams.get('category_id'); 
-    var searchQuery = urlParams.get('q'); 
-    var categoryName = urlParams.get('cat');
-
-    if(searchQuery) $scope.filters.search = searchQuery;
-    // Map Category Name to ID if passed via URL
-    if(categoryName) {
-        $scope.filters.search = categoryName; 
-    }
-    if(categoryId) $scope.filters.categoryId = parseInt(categoryId);
 
     var config = {};
     if (categoryId) config.params = { category_id: categoryId };
@@ -204,8 +205,13 @@ app.controller('MarketCtrl', function ($scope, $http, $q, $window, API_CONFIG) {
         $scope.applyFilters();
     });
 
+
+
     $scope.resetFilters = function() {
-        $scope.filters = { 
+        if(categoryId){
+            $window.location.href ='market.html';
+        }else{
+            $scope.filters = { 
             type: 'sell', 
             search: '', 
             location: '', 
@@ -215,6 +221,8 @@ app.controller('MarketCtrl', function ($scope, $http, $q, $window, API_CONFIG) {
             productId: null
         };
         $scope.applyFilters();
+        }
+    
     };
 
     $scope.applyFilters = function() {
@@ -254,7 +262,7 @@ app.controller('MarketCtrl', function ($scope, $http, $q, $window, API_CONFIG) {
     };
 });
 
-// --- 4. PRODUCT DETAIL CONTROLLER (UPDATED) ---
+// --- PRODUCT DETAIL CONTROLLER (For product_detail.html) ---
 app.controller('ProductDetailCtrl', function ($scope, $http, $window, $rootScope, API_CONFIG) {
     var urlParams = new URLSearchParams(window.location.search);
     var id = urlParams.get('id');
@@ -286,11 +294,23 @@ app.controller('ProductDetailCtrl', function ($scope, $http, $window, $rootScope
         });
     }
 
+    // PLACE BID FUNCTION (Modified to show Login Modal)
     $scope.placeBid = function() {
+        
+        // 1. CHECK LOGIN (SHOW POPUP)
         if (!$rootScope.currentUser) {
-            $rootScope.showToast("Please login to place a bid.", "error");
-            return;
+            var modalElement = document.getElementById('loginWarningModal');
+            if (modalElement && typeof bootstrap !== 'undefined') {
+                var myModal = new bootstrap.Modal(modalElement);
+                myModal.show();
+            } else {
+                alert("Please login first!");
+                $window.location.href = 'login.html';
+            }
+            return; // STOP HERE
         }
+
+        // 2. EXISTING VALIDATION CHECKS
         if ($scope.isOwner) {
             $rootScope.showToast("You cannot bid on your own post.", "error");
             return;
@@ -301,6 +321,7 @@ app.controller('ProductDetailCtrl', function ($scope, $http, $window, $rootScope
              return;
         }
 
+        // 3. PREPARE DATA
         var bidData = {
             bidder: $rootScope.currentUser.id,
             amount: $scope.bid.amount,
@@ -311,6 +332,7 @@ app.controller('ProductDetailCtrl', function ($scope, $http, $window, $rootScope
         if (type === 'buy') bidData.buy_post = id;
         else bidData.sell_post = id;
 
+        // 4. SUBMIT TO API
         $http.post(API_CONFIG.url + "product_bid/", bidData).then(function() {
             $rootScope.showToast("Bid Placed Successfully!", "success");
             $scope.bid = { quantity: 1, amount: "", message: "" };
@@ -321,12 +343,12 @@ app.controller('ProductDetailCtrl', function ($scope, $http, $window, $rootScope
         });
     };
 
-    // Updated: Handles Cancel & Accept Logic
+    // UPDATE STATUS FUNCTION (Kept exactly as previous)
     $scope.updateBidStatus = function(bid, status) {
         if (status === 'CANCELLED' && !confirm("Withdraw this offer?")) return;
 
         $http.put(API_CONFIG.url + "product_bid/" + bid.id + "/", { status: status }).then(function(res) {
-            // Update the bid in the local array with the response (contains updated fields like contact_exchange)
+            // Update the bid in the local array with the response
             var index = $scope.bids.indexOf(bid);
             if (index !== -1) {
                  $scope.bids[index] = res.data;
@@ -345,7 +367,6 @@ app.controller('ProductDetailCtrl', function ($scope, $http, $window, $rootScope
         });
     };
 });
-
 // --- 5. CATEGORY PAGE CONTROLLER ---
 app.controller('CategoryPageCtrl', function($scope, $http, $window, $q, API_CONFIG) {
     $scope.categories = [];
@@ -778,6 +799,56 @@ app.controller('ProductSellCtrl', function ($scope, $http, $rootScope, $window, 
             }
             $scope.isSubmitting = false;
         });
+    };
+});
+// --- PRODUCT BID CONTROLLER (For product_bid.html) ---
+app.controller('ProductBidCtrl', function($scope, $http, $rootScope, $window, API_CONFIG) {
+    
+    // Initial data
+    $scope.product_bid = {}; 
+    $scope.product_bids = [
+        { id: 1, productSeller: 'John Doe', productCost: 150.00, quantity: 50, description: 'Fresh stock available' }
+    ];
+
+    // SAVE FUNCTION (Modified to show Login Modal)
+    $scope.saveProductBid = function() {
+        
+        // 1. CHECK IF USER IS LOGGED IN
+        if (!$rootScope.currentUser) {
+            // Trigger the Bootstrap Modal
+            var modalElement = document.getElementById('loginWarningModal');
+            if (modalElement && typeof bootstrap !== 'undefined') {
+                var myModal = new bootstrap.Modal(modalElement);
+                myModal.show();
+            } else {
+                // Fallback if Bootstrap script is missing
+                alert("Please login first!");
+                $window.location.href = 'login.html';
+            }
+            return; // STOP HERE
+        }
+
+        // 2. EXISTING SAVE LOGIC
+        if ($scope.product_bid.id) {
+            // Edit existing
+            var idx = $scope.product_bids.findIndex(x => x.id === $scope.product_bid.id);
+            if(idx !== -1) $scope.product_bids[idx] = angular.copy($scope.product_bid);
+        } else {
+            // Create new
+            $scope.product_bid.id = new Date().getTime();
+            $scope.product_bids.push(angular.copy($scope.product_bid));
+        }
+        
+        $scope.product_bid = {}; // Clear form
+        if($rootScope.showToast) $rootScope.showToast("Bid Placed Successfully!", "success");
+    };
+
+    $scope.editProductBid = function(p) {
+        $scope.product_bid = angular.copy(p);
+    };
+
+    $scope.deleteProductBid = function(id) {
+        $scope.product_bids = $scope.product_bids.filter(p => p.id !== id);
     };
 });
 
