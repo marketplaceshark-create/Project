@@ -38,7 +38,10 @@
 </head>
 <body ng-controller="ProductDetailCtrl" style="background-color: #f8f9fa;">
 
-    <div ng-include="'components/admin_navbar.html'"></div>
+    <!-- <div ng-include="'components/admin_navbar.html'"></div> -->
+    <div ng-include="'components/navbar.html'" ng-init="activePage=''"></div>
+
+
 
     <div class="container pb-5">
         <!-- PRODUCT CARD -->
