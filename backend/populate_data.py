@@ -74,7 +74,7 @@ def populate():
             email=f"user{i+1}@example.com",
             phone=f"98{random.randint(10000000, 99999999)}",
             address=f"Plot No {i+1}, Agri Zone, India",
-            password="123" 
+            password="Pass@123" 
         )
         customers.append(c)
 
@@ -122,7 +122,6 @@ def populate():
             quantity=random.randint(50, 5000),
             description="Freshly harvested, immediate delivery available.",
             image=None 
-            # Note: Removed sellerName and phoneNo as they are now FKs
         )
         sell_posts.append(sp)
 
